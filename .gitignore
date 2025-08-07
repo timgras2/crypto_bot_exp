@@ -6,5 +6,7 @@ __pycache__/
 .pytest_cache/
 .coverage
 *.log
+logs/*.log
 data/previous_markets.json
 data/active_trades.json
+data/completed_trades.json
