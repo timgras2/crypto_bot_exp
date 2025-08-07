@@ -33,13 +33,65 @@ class TradeManager:
         # Use absolute path relative to the script location
         project_root = Path(__file__).parent.parent
         self.persistence_file = project_root / "data" / "active_trades.json"
+        self.completed_trades_file = project_root / "data" / "completed_trades.json"
         
         # Ensure data directory exists
         self.persistence_file.parent.mkdir(parents=True, exist_ok=True)
         logging.info(f"TradeManager persistence file: {self.persistence_file}")
+        logging.info(f"TradeManager completed trades file: {self.completed_trades_file}")
         
         # Flag to prevent file deletion during shutdown
         self._shutting_down = False
+
+    def record_completed_trade(self, market: str, sell_price: Decimal, trigger_reason: str) -> None:
+        """Record a completed trade to the completed trades file."""
+        try:
+            if market not in self.active_trades:
+                logging.warning(f"Cannot record completed trade for {market} - not in active trades")
+                return
+            
+            trade = self.active_trades[market]
+            
+            # Calculate profit/loss
+            profit_pct = ((sell_price - trade.buy_price) / trade.buy_price) * 100
+            profit_eur = profit_pct / 100 * 10.0  # Approximate EUR profit based on typical €10 trade
+            
+            # Create completed trade record (same format as active trades + completion info)
+            completed_trade = {
+                "market": market,
+                "buy_price": str(trade.buy_price),
+                "sell_price": str(sell_price),
+                "current_price": str(sell_price),  # Final price is sell price
+                "highest_price": str(trade.highest_price),
+                "trailing_stop_price": str(trade.trailing_stop_price),
+                "stop_loss_price": str(trade.stop_loss_price),
+                "start_time": trade.start_time.isoformat(),
+                "sell_time": datetime.now().isoformat(),
+                "last_update": datetime.now().isoformat(),
+                "profit_loss_pct": f"{profit_pct:.2f}",
+                "profit_loss_eur": f"{profit_eur:.4f}",
+                "trigger_reason": trigger_reason,
+                "duration_hours": f"{(datetime.now() - trade.start_time).total_seconds() / 3600:.1f}"
+            }
+            
+            # Load existing completed trades
+            completed_trades = []
+            if self.completed_trades_file.exists():
+                try:
+                    completed_trades = json.loads(self.completed_trades_file.read_text())
+                except Exception as e:
+                    logging.error(f"Error loading completed trades: {e}")
+                    completed_trades = []
+            
+            # Add new completed trade
+            completed_trades.append(completed_trade)
+            
+            # Save updated completed trades
+            self.completed_trades_file.write_text(json.dumps(completed_trades, indent=2))
+            logging.info(f"Recorded completed trade for {market}: {profit_pct:+.2f}% profit/loss")
+            
+        except Exception as e:
+            logging.error(f"Failed to record completed trade for {market}: {e}")
 
     def prepare_for_shutdown(self) -> None:
         """Set shutdown mode to preserve persistence file."""
@@ -502,6 +554,8 @@ class TradeManager:
                             print(f"💸 Sell at €{current_price} | Loss: {loss_pct:.2f}%")
                             logging.info(f"Stop loss triggered for {market} at {current_price}")
                             if self.sell_market(market):
+                                # Record the completed trade before cleanup
+                                self.record_completed_trade(market, current_price, "stop_loss")
                                 print(f"✅ SELL SUCCESS: {market} position closed")
                                 logging.info(f"Exiting thread after stop loss for {market}")
                                 # Clean up immediately when triggered
@@ -516,6 +570,8 @@ class TradeManager:
                             print(f"💰 Sell at €{current_price} | Profit: {profit_pct:.2f}%")
                             logging.info(f"Trailing stop triggered for {market} at {current_price}")
                             if self.sell_market(market):
+                                # Record the completed trade before cleanup
+                                self.record_completed_trade(market, current_price, "trailing_stop")
                                 print(f"✅ SELL SUCCESS: {market} position closed with profit!")
                                 logging.info(f"Exiting thread after trailing stop for {market}")
                                 # Clean up immediately when triggered
