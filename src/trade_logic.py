@@ -281,10 +281,6 @@ class TradeManager:
         else:
             print("ℹ️  No trades were restored (all positions may have been closed)")
             
-        # Clean up persistence file after restoration is complete
-        if self.persistence_file.exists():
-            self.persistence_file.unlink()
-            logging.info("Removed active trades file after restoration complete")
         
         # Save current state (with only successfully restored trades)
         if successfully_restored > 0:
