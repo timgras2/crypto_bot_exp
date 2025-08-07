@@ -1,0 +1,33 @@
+# <type>(<scope>): <subject> (max 50 chars)
+#
+# <body> (wrap at 72 chars)
+#
+# <footer>
+
+# Type should be one of the following:
+# * feat: new feature
+# * fix: bug fix
+# * docs: documentation changes
+# * style: formatting, missing semi colons, etc; no code changes
+# * refactor: refactoring production code
+# * test: adding tests, refactoring test; no production code changes
+# * chore: updating build tasks, package manager configs, etc
+
+# Scope examples for this project:
+# * api: BitvavoAPI, requests_handler
+# * trading: trade_logic, TradeManager
+# * market: market_utils, MarketTracker  
+# * config: configuration management
+# * tests: test suite changes
+# * docs: documentation updates
+
+# Subject line rules:
+# - Use imperative mood ("add" not "added" or "adds")
+# - Don't capitalize first letter
+# - No period at the end
+
+# Body should explain what and why vs. how
+# Use body to explain breaking changes and migration notes
+
+# Footer should contain issue references
+# Examples: "Fixes #123", "Closes #456", "Refs #789"
