@@ -1,0 +1,47 @@
+{
+  "config": {
+    "start_time": "2024-01-01T09:00:00",
+    "end_time": "2024-01-01T10:00:00",
+    "initial_balance_eur": 100.0,
+    "max_trade_amount": 5.0,
+    "simulation_speed": 60.0,
+    "assets_to_simulate": [
+      "TEST-EUR"
+    ],
+    "dip_buy_enabled": true,
+    "dip_levels": [
+      {
+        "threshold_pct": 10.0,
+        "capital_allocation": 1.0
+      }
+    ]
+  },
+  "results": {
+    "duration_seconds": 0.028537,
+    "total_trades": 1,
+    "successful_dip_rebuys": 0,
+    "total_profit_loss_eur": 899.902790886194,
+    "profit_loss_pct": 899.902790886194,
+    "final_portfolio": {
+      "EUR": 995.0,
+      "TEST": 4.57900624920329
+    },
+    "dip_buy_effectiveness": {
+      "total_dip_opportunities": 0,
+      "successful_dip_rebuys": 0,
+      "rebuys_by_level": {},
+      "avg_rebuy_amount": 0
+    }
+  },
+  "trade_events": [
+    {
+      "timestamp": "2024-01-01T09:00:00",
+      "event_type": "initial_buy",
+      "market": "TEST-EUR",
+      "price": 1.0919399817089046,
+      "amount_eur": 5.0,
+      "trigger_reason": "new_listing_simulation",
+      "dip_level": null
+    }
+  ]
+}
