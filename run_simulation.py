@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Dip Buy Strategy Simulation Runner
 """
@@ -8,6 +9,15 @@ import sys
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+
+# Fix Unicode encoding on Windows
+if sys.platform.startswith('win'):
+    try:
+        # Try to set UTF-8 for stdout
+        sys.stdout.reconfigure(encoding='utf-8')
+    except (AttributeError, OSError):
+        # Fallback for older Python versions or restricted environments
+        pass
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -175,7 +185,11 @@ def main():
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     
-    print("🤖 Dip Buy Strategy Simulator")
+    # Handle Unicode encoding issues on Windows
+    try:
+        print("🤖 Dip Buy Strategy Simulator")
+    except UnicodeEncodeError:
+        print("Dip Buy Strategy Simulator")
     print("=" * 50)
     
     try:

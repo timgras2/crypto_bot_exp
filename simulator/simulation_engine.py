@@ -114,8 +114,8 @@ class SimulationEngine:
         try:
             # Initialize dip buy components with simulated API
             trading_config = TradingConfig(
-                min_profit_pct=Decimal('5'),
-                trailing_pct=Decimal('3'),
+                min_profit_pct=Decimal('5'),  # 5% minimum profit target
+                trailing_pct=Decimal('10'),   # 10% trailing stop (more realistic for crypto)
                 max_trade_amount=self.config.max_trade_amount,
                 check_interval=10,
                 max_retries=3,
@@ -135,7 +135,7 @@ class SimulationEngine:
             dip_manager = DipBuyManager(
                 api=self.mock_api,
                 config=dip_config,
-                max_trade_amount=self.config.max_trade_amount,
+                trading_config=trading_config,
                 data_dir=Path("simulator/temp_data")
             )
             
@@ -196,7 +196,7 @@ class SimulationEngine:
                     "buy_price": executed_price,
                     "start_time": self.current_time,
                     "highest_price": executed_price,
-                    "trailing_stop_price": executed_price * (Decimal('1') - Decimal('3') / Decimal('100'))
+                    "trailing_stop_price": executed_price * (Decimal('1') - Decimal('10') / Decimal('100'))  # 10% trailing stop
                 }
                 
                 print(f"[BUY] Bought {market} at EUR {executed_price:.6f} for EUR {self.config.max_trade_amount}")
@@ -240,19 +240,29 @@ class SimulationEngine:
                 # Get current price
                 current_price = self.mock_api.data_manager.get_price_at_time(market, self.current_time)
                 
-                # Update highest price and trailing stop
+                # Update highest price and trailing stop  
                 if current_price > position["highest_price"]:
                     position["highest_price"] = current_price
-                    position["trailing_stop_price"] = current_price * (Decimal('1') - Decimal('3') / Decimal('100'))
+                    # Use the actual trailing_pct from trading config (10%)
+                    trailing_pct = Decimal('10')  # Should match trading_config.trailing_pct
+                    position["trailing_stop_price"] = current_price * (Decimal('1') - trailing_pct / Decimal('100'))
                 
                 # Check if trailing stop is hit
                 if current_price <= position["trailing_stop_price"]:
-                    # Trigger sale
+                    # Get actual balance to sell (like the real bot does - Bitvavo doesn't accept '100%')
+                    symbol = market.split("-")[0]
+                    current_balance = self.mock_api._get_current_balance(symbol)
+                    
+                    if current_balance <= 0:
+                        logger.warning(f"No {symbol} balance to sell for {market}")
+                        continue
+                    
+                    # Trigger sale with actual balance amount
                     sell_response = self.mock_api.send_request("POST", "/order", {
                         "market": market,
                         "side": "sell",
                         "orderType": "market", 
-                        "amount": "100%",  # Sell all
+                        "amount": str(current_balance),  # Use actual balance like real bot
                         "operatorId": 1001
                     })
                     
@@ -337,7 +347,7 @@ class SimulationEngine:
                                 "buy_price": executed_price,
                                 "start_time": self.current_time,
                                 "highest_price": executed_price,
-                                "trailing_stop_price": executed_price * (Decimal('1') - Decimal('3') / Decimal('100'))
+                                "trailing_stop_price": executed_price * (Decimal('1') - Decimal('10') / Decimal('100'))  # 10% trailing stop
                             }
                         
                 except Exception as e:

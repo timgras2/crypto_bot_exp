@@ -193,6 +193,62 @@ Additional documentation files provide specific guidance:
 - `BITVAVO_API_UPDATE.md` - Recent API changes and requirements
 - `TERMINAL_OUTPUT_EXAMPLE.md` - Example of typical bot output
 
+## Unicode and Encoding Issues (Windows)
+
+When developing on Windows, you may encounter Unicode encoding errors when using emojis or special characters in Python scripts. This is because Windows console often defaults to CP1252 encoding instead of UTF-8.
+
+### Common Unicode Error
+```
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f916' in position 0: character maps to <undefined>
+```
+
+### Prevention Template
+
+Add this to the top of Python files that use Unicode characters:
+
+```python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import sys
+
+# Fix Unicode encoding on Windows
+if sys.platform.startswith('win'):
+    try:
+        # Try to set UTF-8 for stdout
+        sys.stdout.reconfigure(encoding='utf-8')
+    except (AttributeError, OSError):
+        # Fallback for older Python versions or restricted environments
+        pass
+```
+
+### Handling Print Statements
+
+For print statements with emojis, use try-catch fallback:
+
+```python
+try:
+    print("🤖 Bot Status")
+except UnicodeEncodeError:
+    print("Bot Status")  # Fallback without emoji
+```
+
+### File Writing
+
+Always specify UTF-8 encoding for file operations:
+
+```python
+# Good
+file_path.write_text(content, encoding='utf-8')
+
+# Bad (uses system default)
+file_path.write_text(content)
+```
+
+### Testing
+
+The simulator and test files have been updated with these fixes. Use them as templates for new Python files that include Unicode characters.
+
 ## Future Work
 
 The `future_work/` directory contains portfolio tracking functionality (`bitvavo_interface.py`) that can be integrated when needed. This provides enhanced portfolio management and tracking features beyond basic trading automation.

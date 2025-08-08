@@ -53,6 +53,13 @@ class DipEvaluator:
         Returns:
             RebuyDecision with evaluation result
         """
+        # Input validation
+        if not self._validate_inputs(asset_info, current_price, asset_state):
+            return RebuyDecision(
+                should_rebuy=False,
+                reason="Invalid input data"
+            )
+        
         if not self.config.enabled:
             return RebuyDecision(
                 should_rebuy=False,
@@ -161,19 +168,29 @@ class DipEvaluator:
     
     def _is_level_ready_for_retry(self, level_number: int, asset_state: Dict[str, Any]) -> bool:
         """Check if a level is ready for retry after technical failures."""
+        # Validate level number bounds
+        if level_number < 1 or level_number > len(self.config.dip_levels):
+            logger.error(f"Invalid level number: {level_number} (available: 1-{len(self.config.dip_levels)})")
+            return False
+        
         levels_data = asset_state.get('levels', {})
         level_data = levels_data.get(str(level_number), {})
         
         # Check if level has failed attempts and is in backoff
         next_retry = level_data.get('next_retry_at')
         if next_retry:
-            retry_time = datetime.fromisoformat(next_retry)
-            if datetime.now() < retry_time:
-                return False
+            try:
+                retry_time = datetime.fromisoformat(next_retry)
+                if datetime.now() < retry_time:
+                    return False
+            except ValueError as e:
+                logger.warning(f"Invalid retry timestamp for level {level_number}: {e}")
+                # Continue processing if timestamp is invalid
         
-        # Check retry count limit
+        # Check retry count limit - now safe after bounds check
         retry_count = level_data.get('retry_count', 0)
-        if retry_count >= self.config.dip_levels[level_number - 1].max_retries:
+        level_config = self.config.dip_levels[level_number - 1]
+        if retry_count >= level_config.max_retries:
             logger.debug(f"Level {level_number} exceeded max retries ({retry_count})")
             return False
         
@@ -230,3 +247,48 @@ class DipEvaluator:
             'threshold_prices': threshold_prices,
             'trigger_reason': asset_info.trigger_reason
         }
+    
+    def _validate_inputs(self, asset_info: AssetSaleInfo, current_price: Decimal, 
+                        asset_state: Dict[str, Any]) -> bool:
+        """Validate inputs for rebuy evaluation."""
+        try:
+            # Validate current price
+            if current_price <= 0:
+                logger.error(f"Invalid current price for {asset_info.market}: {current_price}")
+                return False
+            
+            # Validate asset_info
+            if not asset_info.market or not asset_info.market.strip():
+                logger.error("Missing or empty market name")
+                return False
+                
+            if asset_info.sell_price <= 0:
+                logger.error(f"Invalid sell price for {asset_info.market}: {asset_info.sell_price}")
+                return False
+            
+            # Validate asset_state structure
+            required_keys = ['completed_rebuys', 'levels']
+            for key in required_keys:
+                if key not in asset_state:
+                    logger.warning(f"Missing key '{key}' in asset state for {asset_info.market}")
+                    # Initialize missing keys with defaults
+                    if key == 'completed_rebuys':
+                        asset_state[key] = []
+                    elif key == 'levels':
+                        asset_state[key] = {}
+            
+            # Validate completed_rebuys is a list
+            if not isinstance(asset_state.get('completed_rebuys'), list):
+                logger.warning(f"Invalid completed_rebuys type for {asset_info.market}, resetting to empty list")
+                asset_state['completed_rebuys'] = []
+            
+            # Validate levels is a dict
+            if not isinstance(asset_state.get('levels'), dict):
+                logger.warning(f"Invalid levels type for {asset_info.market}, resetting to empty dict")
+                asset_state['levels'] = {}
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error validating inputs for {asset_info.market}: {e}")
+            return False

@@ -33,7 +33,7 @@ class TradingBot:
                 self.dip_manager = DipBuyManager(
                     api=self.api,
                     config=self.dip_config,
-                    max_trade_amount=self.trading_config.max_trade_amount,
+                    trading_config=self.trading_config,
                     data_dir=data_dir,
                     check_interval=self.trading_config.check_interval
                 )

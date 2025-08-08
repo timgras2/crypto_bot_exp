@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Simple test to validate the dip buying simulator works correctly
 """
@@ -8,6 +9,15 @@ import sys
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+
+# Fix Unicode encoding on Windows
+if sys.platform.startswith('win'):
+    try:
+        # Try to set UTF-8 for stdout
+        sys.stdout.reconfigure(encoding='utf-8')
+    except (AttributeError, OSError):
+        # Fallback for older Python versions or restricted environments
+        pass
 
 # Add paths for imports
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -141,7 +151,11 @@ def test_full_integration():
 
 def main():
     """Run all tests."""
-    print("🤖 Dip Buy Simulator Tests")
+    # Handle Unicode encoding issues on Windows
+    try:
+        print("🤖 Dip Buy Simulator Tests")
+    except UnicodeEncodeError:
+        print("Dip Buy Simulator Tests")
     print("=" * 40)
     
     # Configure logging

@@ -12,6 +12,7 @@ from typing import Dict, Any, Optional, List
 from decimal import Decimal, InvalidOperation
 
 from future_work.dip_evaluator import AssetSaleInfo
+from src.config import DipBuyConfig
 
 logger = logging.getLogger(__name__)
 
@@ -19,38 +20,59 @@ logger = logging.getLogger(__name__)
 class DipStateManager:
     """Manages persistence and recovery of dip tracking state."""
     
-    def __init__(self, data_dir: Path):
+    def __init__(self, data_dir: Path, dip_config: Optional[DipBuyConfig] = None):
         self.data_dir = data_dir
         self.persistence_file = data_dir / "dip_tracking.json"
         self._lock = threading.Lock()
+        self.dip_config = dip_config
         
         # Ensure data directory exists
         self.data_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"DipStateManager using persistence file: {self.persistence_file}")
     
     def load_state(self) -> Dict[str, Any]:
-        """Load dip tracking state from disk."""
-        try:
-            if not self.persistence_file.exists():
-                logger.info(f"No dip tracking file found at {self.persistence_file} - starting fresh")
-                return {}
-            
-            with self._lock:
-                state_data = json.loads(self.persistence_file.read_text())
-                logger.info(f"Loaded dip tracking state for {len(state_data)} assets")
-                return state_data
+        """Load dip tracking state from disk with retry logic."""
+        for attempt in range(3):  # Retry up to 3 times
+            try:
+                if not self.persistence_file.exists():
+                    logger.info(f"No dip tracking file found at {self.persistence_file} - starting fresh")
+                    return {}
                 
-        except Exception as e:
-            logger.error(f"Failed to load dip tracking state: {e}")
-            # Move corrupted file out of the way
-            if self.persistence_file.exists():
-                backup_path = self.persistence_file.with_suffix('.json.backup')
-                self.persistence_file.rename(backup_path)
-                logger.warning(f"Moved corrupted dip tracking file to {backup_path}")
-            return {}
+                with self._lock:
+                    state_data = json.loads(self.persistence_file.read_text(encoding='utf-8'))
+                    logger.info(f"Loaded dip tracking state for {len(state_data)} assets")
+                    return state_data
+                    
+            except (FileNotFoundError, PermissionError) as e:
+                if attempt < 2:  # Retry for file system issues
+                    logger.warning(f"File access issue (attempt {attempt + 1}/3): {e}")
+                    import time
+                    time.sleep(0.1 * (attempt + 1))  # Exponential backoff
+                    continue
+                else:
+                    logger.error(f"Failed to load dip tracking state after retries: {e}")
+                    return {}
+                    
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse dip tracking state (corrupted JSON): {e}")
+                # Move corrupted file out of the way
+                if self.persistence_file.exists():
+                    backup_path = self.persistence_file.with_suffix('.json.backup')
+                    try:
+                        self.persistence_file.rename(backup_path)
+                        logger.warning(f"Moved corrupted dip tracking file to {backup_path}")
+                    except Exception as backup_error:
+                        logger.error(f"Failed to backup corrupted file: {backup_error}")
+                return {}
+                
+            except Exception as e:
+                logger.error(f"Unexpected error loading dip tracking state: {e}")
+                return {}
+        
+        return {}  # Fallback if all retries failed
     
     def save_state(self, state_data: Dict[str, Any]) -> None:
-        """Save dip tracking state to disk."""
+        """Save dip tracking state to disk with atomic writes."""
         try:
             with self._lock:
                 # Clean up expired entries before saving
@@ -63,9 +85,21 @@ class DipStateManager:
                         logger.info("No active dip tracking - removed persistence file")
                     return
                 
-                # Save to file
-                self.persistence_file.write_text(json.dumps(cleaned_state, indent=2))
-                logger.debug(f"Saved dip tracking state for {len(cleaned_state)} assets")
+                # Atomic write: write to temporary file first, then rename
+                temp_file = self.persistence_file.with_suffix('.tmp')
+                try:
+                    # Write to temporary file
+                    temp_file.write_text(json.dumps(cleaned_state, indent=2), encoding='utf-8')
+                    
+                    # Atomic rename (works on both Windows and Unix)
+                    temp_file.replace(self.persistence_file)
+                    logger.debug(f"Saved dip tracking state for {len(cleaned_state)} assets")
+                    
+                except Exception:
+                    # Clean up temp file if something went wrong
+                    if temp_file.exists():
+                        temp_file.unlink()
+                    raise
                 
         except Exception as e:
             logger.error(f"Failed to save dip tracking state: {e}")
@@ -136,9 +170,11 @@ class DipStateManager:
         self.update_level_attempt(market, level_number, 'completed')
         
         # Set asset cooldown
-        from src.config import load_config
-        _, _, dip_config = load_config()
-        cooldown_until = datetime.now() + timedelta(hours=dip_config.cooldown_hours)
+        if self.dip_config:
+            cooldown_until = datetime.now() + timedelta(hours=self.dip_config.cooldown_hours)
+        else:
+            # Fallback to default cooldown if config not available
+            cooldown_until = datetime.now() + timedelta(hours=4)
         state[market]['next_asset_cooldown'] = cooldown_until.isoformat()
         
         logger.info(f"Recorded successful rebuy for {market} level {level_number}: "

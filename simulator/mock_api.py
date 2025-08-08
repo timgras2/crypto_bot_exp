@@ -7,7 +7,7 @@ import json
 import logging
 import time
 from datetime import datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Dict, List, Optional, Any
 from pathlib import Path
 
@@ -175,7 +175,7 @@ class MockBitvavoAPI:
                 return None
                 
         except Exception as e:
-            logger.error(f"Error in mock API request {method} {endpoint}: {e}")
+            logger.error(f"Error in mock API request {method} {endpoint}: {type(e).__name__}: {e}")
             return None
     
     def _handle_ticker_price(self, endpoint: str) -> Dict[str, Any]:
@@ -224,53 +224,89 @@ class MockBitvavoAPI:
     
     def _handle_order_placement(self, body: Dict[str, Any]) -> Dict[str, Any]:
         """Handle order placement (simulate successful execution)."""
-        market = body.get("market", "UNKNOWN-EUR")
-        side = body.get("side", "buy")
-        order_type = body.get("orderType", "market")
-        amount_quote = body.get("amountQuote")
-        amount = body.get("amount")
+        try:
+            market = body.get("market", "UNKNOWN-EUR")
+            side = body.get("side", "buy")
+            order_type = body.get("orderType", "market")
+            amount_quote = body.get("amountQuote")
+            amount = body.get("amount")
+            
+            # Get current market price
+            current_price = self.data_manager.get_price_at_time(market, self.current_simulation_time)
+            
+            # Simulate execution with small slippage
+            import random
+            slippage = random.uniform(0.001, 0.005)  # 0.1% to 0.5% slippage
+            if side == "buy":
+                execution_price = current_price * Decimal(str(1 + slippage))
+            else:
+                execution_price = current_price * Decimal(str(1 - slippage))
+            
+            order_id = f"sim-{self.order_counter:06d}"
+            self.order_counter += 1
+            
+            # Calculate filled amounts with proper error handling
+            if amount_quote:  # Buying with EUR amount
+                try:
+                    filled_amount_quote = Decimal(str(amount_quote))
+                    filled_amount = filled_amount_quote / execution_price
+                except (ValueError, InvalidOperation) as e:
+                    logger.error(f"Invalid amountQuote value '{amount_quote}': {e}")
+                    return None
+            elif amount:  # Selling specific amount of crypto
+                try:
+                    # Convert amount to Decimal (Bitvavo API expects specific amounts, not "100%")
+                    filled_amount = Decimal(str(amount))
+                    filled_amount_quote = filled_amount * execution_price
+                except (ValueError, InvalidOperation) as e:
+                    logger.error(f"Invalid amount value '{amount}': {e}")
+                    return None
+            else:
+                logger.error("Order missing both amount and amountQuote")
+                return None
+            
+            # Record the executed order
+            order_record = {
+                "orderId": order_id,
+                "market": market,
+                "side": side,
+                "orderType": order_type,
+                "amount": str(filled_amount),
+                "amountQuote": str(filled_amount_quote),
+                "price": str(execution_price),
+                "executedPrice": str(execution_price),
+                "timestamp": int(self.current_simulation_time.timestamp() * 1000),
+                "status": "filled"
+            }
+            
+            self.executed_orders.append(order_record)
+            
+            logger.info(f"Simulated {side} order: {market} {filled_amount} at €{execution_price}")
+            
+            return order_record
+            
+        except Exception as e:
+            logger.error(f"Error processing order placement: {e}")
+            return None
+    
+    def _get_current_balance(self, symbol: str) -> Decimal:
+        """Get current balance for a specific symbol based on executed orders."""
+        balance = Decimal("0")
         
-        # Get current market price
-        current_price = self.data_manager.get_price_at_time(market, self.current_simulation_time)
+        for order in self.executed_orders:
+            order_market = order["market"]
+            order_symbol = order_market.split("-")[0]
+            
+            if order_symbol == symbol:
+                order_side = order["side"]
+                order_amount = Decimal(order["amount"])
+                
+                if order_side == "buy":
+                    balance += order_amount
+                else:  # sell
+                    balance -= order_amount
         
-        # Simulate execution with small slippage
-        import random
-        slippage = random.uniform(0.001, 0.005)  # 0.1% to 0.5% slippage
-        if side == "buy":
-            execution_price = current_price * Decimal(str(1 + slippage))
-        else:
-            execution_price = current_price * Decimal(str(1 - slippage))
-        
-        order_id = f"sim-{self.order_counter:06d}"
-        self.order_counter += 1
-        
-        # Calculate filled amounts
-        if amount_quote:  # Buying with EUR amount
-            filled_amount_quote = Decimal(str(amount_quote))
-            filled_amount = filled_amount_quote / execution_price
-        else:  # Selling specific amount of crypto
-            filled_amount = Decimal(str(amount))
-            filled_amount_quote = filled_amount * execution_price
-        
-        # Record the executed order
-        order_record = {
-            "orderId": order_id,
-            "market": market,
-            "side": side,
-            "orderType": order_type,
-            "amount": str(filled_amount),
-            "amountQuote": str(filled_amount_quote),
-            "price": str(execution_price),
-            "executedPrice": str(execution_price),
-            "timestamp": int(self.current_simulation_time.timestamp() * 1000),
-            "status": "filled"
-        }
-        
-        self.executed_orders.append(order_record)
-        
-        logger.info(f"Simulated {side} order: {market} {filled_amount} at €{execution_price}")
-        
-        return order_record
+        return balance
     
     def _handle_balance_request(self) -> List[Dict[str, Any]]:
         """Handle balance requests (return current simulated portfolio)."""

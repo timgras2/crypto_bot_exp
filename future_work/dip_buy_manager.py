@@ -11,7 +11,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from src.config import DipBuyConfig
+from src.config import DipBuyConfig, TradingConfig
 from src.requests_handler import BitvavoAPI
 from future_work.dip_evaluator import DipEvaluator, AssetSaleInfo, RebuyDecision
 from future_work.dip_state import DipStateManager
@@ -31,16 +31,17 @@ class DipBuyManager:
     - Maintain persistent state across bot restarts
     """
     
-    def __init__(self, api: BitvavoAPI, config: DipBuyConfig, max_trade_amount: Decimal, 
+    def __init__(self, api: BitvavoAPI, config: DipBuyConfig, trading_config: TradingConfig, 
                  data_dir: Path, check_interval: int = 10):
         self.api = api
         self.config = config
-        self.max_trade_amount = max_trade_amount
+        self.trading_config = trading_config
+        self.max_trade_amount = trading_config.max_trade_amount
         self.check_interval = check_interval
         
         # Initialize components
-        self.evaluator = DipEvaluator(config, max_trade_amount)
-        self.state_manager = DipStateManager(data_dir)
+        self.evaluator = DipEvaluator(config, self.max_trade_amount)
+        self.state_manager = DipStateManager(data_dir, config)
         self.market_filter = MarketFilter(api) if config.use_market_filter else None
         
         # Threading control
@@ -166,21 +167,51 @@ class DipBuyManager:
     def _check_asset_for_dip(self, market: str, asset_state: Dict[str, Any]) -> None:
         """Check a specific asset for dip rebuy opportunities."""
         try:
+            # Validate market name
+            if not market or not market.strip():
+                logger.error("Invalid market name provided")
+                return
+            
             # Get current market price
             response = self.api.send_request("GET", f"/ticker/price?market={market}")
             if not response or 'price' not in response:
                 logger.debug(f"No price data for {market}")
                 return
             
-            current_price = Decimal(str(response['price']))
+            # Validate price response
+            try:
+                current_price = Decimal(str(response['price']))
+                if current_price <= 0:
+                    logger.error(f"Invalid price received for {market}: {current_price}")
+                    return
+            except (ValueError, InvalidOperation) as e:
+                logger.error(f"Could not parse price for {market}: {response.get('price')} - {e}")
+                return
             
-            # Reconstruct asset sale info
-            asset_info = AssetSaleInfo(
-                market=market,
-                sell_price=Decimal(asset_state['sell_price']),
-                sell_timestamp=datetime.fromisoformat(asset_state['sell_timestamp']),
-                trigger_reason=asset_state.get('trigger_reason', 'unknown')
-            )
+            # Validate and reconstruct asset sale info
+            try:
+                sell_price = Decimal(str(asset_state.get('sell_price', '0')))
+                if sell_price <= 0:
+                    logger.error(f"Invalid sell_price in asset_state for {market}: {sell_price}")
+                    return
+                
+                sell_timestamp_str = asset_state.get('sell_timestamp')
+                if not sell_timestamp_str:
+                    logger.error(f"Missing sell_timestamp in asset_state for {market}")
+                    return
+                
+                sell_timestamp = datetime.fromisoformat(sell_timestamp_str)
+                
+                asset_info = AssetSaleInfo(
+                    market=market,
+                    sell_price=sell_price,
+                    sell_timestamp=sell_timestamp,
+                    trigger_reason=asset_state.get('trigger_reason', 'unknown')
+                )
+                
+            except (ValueError, InvalidOperation) as e:
+                logger.error(f"Invalid asset_state data for {market}: {e}")
+                return
             
             # Evaluate rebuy opportunity
             decision = self.evaluator.should_rebuy(asset_info, current_price, asset_state)
@@ -240,7 +271,7 @@ class DipBuyManager:
                 'side': 'buy',
                 'orderType': 'market',
                 'amountQuote': str(amount_eur),
-                'operatorId': 1001  # Required by Bitvavo API
+                'operatorId': self.trading_config.operator_id
             }
             
             for attempt in range(3):  # Max 3 retry attempts

@@ -6,7 +6,7 @@ Market Filter - Optional market condition checking for dip buying
 import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ class MarketFilter:
         self._btc_price_cache = {}
         self._cache_duration = timedelta(minutes=5)  # Cache BTC price for 5 minutes
     
-    def should_allow_rebuy(self) -> tuple[bool, str]:
+    def should_allow_rebuy(self) -> Tuple[bool, str]:
         """
         Check if market conditions allow for rebuy operations.
         
@@ -49,7 +49,7 @@ class MarketFilter:
             # Fail open - allow rebuys if we can't check conditions
             return True, "Market filter unavailable - allowing rebuy"
     
-    def _check_btc_trend(self) -> tuple[bool, str]:
+    def _check_btc_trend(self) -> Tuple[bool, str]:
         """
         Check Bitcoin trend as a general market indicator.
         

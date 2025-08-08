@@ -314,9 +314,9 @@ class ResultsAnalyzer:
         ])
         report_sections.extend(recommendations)
         
-        # Write to file
+        # Write to file with UTF-8 encoding to handle Unicode characters
         full_report = "\n".join(report_sections)
-        output_file.write_text(full_report)
+        output_file.write_text(full_report, encoding='utf-8')
         
         print(f"📊 Analysis report saved to: {output_file}")
         return output_file
