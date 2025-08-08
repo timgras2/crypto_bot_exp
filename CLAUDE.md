@@ -18,6 +18,18 @@ crypto_bot_main/
 │   ├── market_utils.py       # MarketTracker for new listings detection
 │   ├── trade_logic.py        # TradeManager for execution and monitoring
 │   └── crypto_bot.egg-info/  # Package metadata (auto-generated)
+├── simulator/                # Trading strategy simulator
+│   ├── __init__.py          # Package initialization
+│   ├── simulation_engine.py # Core simulation engine
+│   ├── mock_api.py          # Mock Bitvavo API with historical data
+│   ├── results_analyzer.py  # Analysis and reporting tools
+│   ├── data/               # Historical price data
+│   └── results/            # Simulation results and analysis
+├── future_work/             # Advanced features (dip buying strategy)
+│   ├── dip_buy_manager.py  # Main orchestration for dip buying
+│   ├── dip_evaluator.py    # Decision engine for rebuy opportunities
+│   ├── dip_state.py        # Thread-safe state persistence
+│   └── market_filter.py    # Market condition filtering
 ├── tests/                    # Comprehensive unit tests
 │   ├── __init__.py
 │   ├── conftest.py          # pytest configuration and fixtures
@@ -40,8 +52,12 @@ crypto_bot_main/
 ├── start_bot.py         # Convenient launcher script
 ├── start_bot.bat        # Windows batch launcher
 ├── start_bot.sh         # Unix shell launcher
+├── run_simulation.py    # Trading strategy simulator launcher
+├── test_simulator.py    # Comprehensive simulator tests
 ├── .env.example         # Environment variables template
-├── CLAUDE.md           # This file
+├── CLAUDE.md           # This file - main development guide
+├── CLAUDE_DIP_BUY.md   # Comprehensive dip buying strategy guide
+├── CLAUDE_SIMULATOR.md # Detailed simulator documentation
 ├── QUICKSTART.md       # Quick setup guide
 ├── SAFETY_CHECKLIST.md # Pre-trading safety checks
 ├── FIRST_RUN_BEHAVIOR.md # First run documentation
@@ -110,6 +126,18 @@ start_bot.bat
 ./start_bot.sh
 ```
 
+### Running the Simulator
+```bash
+# Interactive simulator with strategy testing
+python run_simulation.py
+
+# Quick simulator tests
+python test_simulator.py
+
+# Simple functionality test  
+python test_simulator_simple.py
+```
+
 ### Testing
 ```bash
 # Run all tests
@@ -164,6 +192,7 @@ The bot uses threading for concurrent operations:
 
 ## Key Features
 
+### Core Trading Features
 - **New Listing Detection**: Monitors Bitvavo for newly added trading pairs
 - **Automated Trading**: Places market buy orders for new listings with volume validation
 - **Trailing Stop-Loss**: Dynamic profit protection that adjusts with price increases
@@ -172,6 +201,18 @@ The bot uses threading for concurrent operations:
 - **Rate Limiting**: Respects exchange API limits with sliding window implementation
 - **Comprehensive Logging**: Detailed activity logs for debugging and monitoring
 - **Input Validation**: Extensive validation of all trading parameters and market names
+
+### Advanced Features (Optional)
+- **Dip Buying Strategy**: Automatically rebuy assets after profitable sales when price drops
+- **Multi-Level Dip Tracking**: Configure multiple price thresholds with different capital allocations
+- **Market Condition Filtering**: Optional BTC trend analysis to gate rebuy decisions
+- **Thread-Safe State Management**: Robust persistence with atomic operations and recovery
+
+### Testing & Simulation
+- **Historical Backtesting**: Test strategies against real historical price data
+- **Mock API Simulation**: Safe testing environment with realistic market behavior
+- **Performance Analysis**: Detailed P&L analysis and strategy optimization
+- **Risk Assessment**: Comprehensive reporting on strategy effectiveness
 
 ## Testing
 
@@ -249,6 +290,33 @@ file_path.write_text(content)
 
 The simulator and test files have been updated with these fixes. Use them as templates for new Python files that include Unicode characters.
 
+## Development Notes
+
+### Recent v2.0 Improvements
+- **Thread Safety**: All dip buying components now use atomic operations and proper locking
+- **Input Validation**: Comprehensive validation prevents crashes from invalid data
+- **API Compliance**: Fixed simulator to properly comply with Bitvavo API requirements
+- **Error Recovery**: Graceful handling of file corruption and network issues
+- **Performance**: Optimized balance tracking and state management
+
+### Code Quality Standards
+- All new code includes comprehensive input validation
+- Thread-safe operations use proper locking mechanisms
+- File operations are atomic with backup and recovery
+- Error messages are descriptive and actionable
+- Unicode characters handled properly on Windows
+
+### Testing Requirements
+- Unit tests for all critical components
+- Integration tests for component interactions
+- Simulator tests for strategy validation
+- Error injection tests for robustness
+
 ## Future Work
 
-The `future_work/` directory contains portfolio tracking functionality (`bitvavo_interface.py`) that can be integrated when needed. This provides enhanced portfolio management and tracking features beyond basic trading automation.
+The `future_work/` directory contains:
+- **Advanced dip buying strategy** (production-ready)
+- **Portfolio tracking functionality** (`bitvavo_interface.py`) for enhanced management
+- **Market analysis tools** for strategy optimization
+
+All future work follows the same quality standards with comprehensive error handling, input validation, and thread safety.

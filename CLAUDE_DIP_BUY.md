@@ -20,12 +20,16 @@ This branch (`feature/dip-buy-strategy`) implements an advanced dip buying strat
 - `DipEvaluator`: Central decision logic for rebuy opportunities
 - `RebuyDecision`: Decision result dataclass
 - `AssetSaleInfo`: Information about completed asset sales
+- **Input validation** for all price data, market names, and asset states
+- **Bounds checking** for array access to prevent IndexError crashes
 - Key method: `should_rebuy()` - evaluates all conditions for rebuy
 
 #### **State Management** (`future_work/dip_state.py`)
 - `DipStateManager`: Handles persistence in `data/dip_tracking.json`
-- Thread-safe operations with automatic cleanup of expired entries
-- State format: JSON with asset market as key, tracking data as value
+- **Thread-safe operations** with file locking and atomic writes
+- **Retry logic** with exponential backoff for file system operations
+- **Automatic cleanup** of expired entries and corruption recovery
+- **State validation** with graceful handling of missing or invalid data
 
 #### **Market Context** (`future_work/market_filter.py`)
 - `MarketFilter`: Optional BTC trend checking to gate rebuys
@@ -34,8 +38,11 @@ This branch (`feature/dip-buy-strategy`) implements an advanced dip buying strat
 
 #### **Main Orchestration** (`future_work/dip_buy_manager.py`)
 - `DipBuyManager`: Main service class that coordinates all components
-- Runs monitoring loop in separate thread
-- Handles order execution and failure recovery with exponential backoff
+- **Configurable API integration** with trading_config.operator_id
+- **Thread-safe monitoring** loop in separate thread
+- **Comprehensive validation** of market names, prices, and API responses
+- **Order execution** with failure recovery and exponential backoff
+- **Bitvavo API compliance** with proper balance queries (no "100%" amounts)
 
 ### Integration Points
 
@@ -190,6 +197,29 @@ DIP_LEVELS=10:0.4,20:0.35,35:0.25  # threshold_pct:capital_allocation
 - Limited by `DIP_MAX_REBUYS_PER_ASSET` setting
 - JSON persistence prevents memory growth across restarts
 
+## Recent Bug Fixes & Improvements (v2.0)
+
+### Critical Fixes Applied
+1. **Thread Safety** - Implemented atomic file writes with temporary files and retry logic
+2. **API Compliance** - Fixed Bitvavo API compatibility (removed invalid "100%" amounts)
+3. **Input Validation** - Added comprehensive validation for all price data and state
+4. **Configuration** - Replaced hardcoded operatorId with configurable value
+5. **Error Handling** - Added bounds checking and graceful failure recovery
+6. **Python Compatibility** - Fixed type hints for Python 3.8+ compatibility
+
+### Validation Improvements
+- **Price Validation**: All prices checked for positive values
+- **Market Names**: Validated for non-empty strings
+- **State Structure**: Missing keys auto-initialized with safe defaults
+- **Decimal Conversion**: Protected against invalid numeric formats
+- **File Operations**: Retry logic with exponential backoff
+
+### Performance Enhancements
+- **Atomic Writes**: Prevent state corruption during file operations
+- **Balance Tracking**: Proper calculation of available crypto holdings
+- **Error Recovery**: Automatic backup of corrupted state files
+- **Memory Management**: Efficient cleanup of expired tracking data
+
 ## Debugging
 
 ### Key Log Messages
@@ -198,6 +228,14 @@ DIP_LEVELS=10:0.4,20:0.35,35:0.25  # threshold_pct:capital_allocation
 - `"Dip rebuy opportunity: {market}"` - Rebuy conditions met
 - `"Successfully executed dip rebuy"` - Order completed
 - `"Dip rebuy failed"` - Order execution failed
+- `"Invalid price data for {market}"` - Validation error (new)
+- `"Moved corrupted dip tracking file to backup"` - Recovery action (new)
+
+### Validation Error Messages
+- `"Invalid current price for {market}"` - Price validation failed
+- `"Missing or empty market name"` - Market name validation
+- `"Invalid level number: {level}"` - Bounds checking triggered
+- `"Missing key '{key}' in asset state"` - Auto-initialization triggered
 
 ### Common Debug Steps
 1. Check `DIP_BUY_ENABLED` setting
@@ -205,5 +243,24 @@ DIP_LEVELS=10:0.4,20:0.35,35:0.25  # threshold_pct:capital_allocation
 3. Examine `data/dip_tracking.json` for asset state
 4. Check API credentials and connectivity
 5. Verify sufficient account balance for rebuy amounts
+6. **New**: Check for validation warnings in logs
+7. **New**: Verify backup files if state corruption detected
 
-This implementation provides a production-ready dip buying strategy with comprehensive safety measures and rollback options.
+## System Robustness
+
+### Error Recovery Features
+- **Automatic State Recovery**: Corrupted JSON files automatically backed up and reset
+- **Graceful Degradation**: Invalid data handled without crashes
+- **Retry Logic**: File operations retry with exponential backoff
+- **Input Sanitization**: All external data validated before processing
+
+### Production Readiness
+This implementation is now **production-ready** with:
+- ✅ Thread-safe operations
+- ✅ Comprehensive error handling
+- ✅ API compliance verification
+- ✅ Input validation coverage
+- ✅ Graceful failure recovery
+- ✅ Performance optimizations
+
+The system handles edge cases gracefully and provides detailed logging for debugging any issues that may arise.
