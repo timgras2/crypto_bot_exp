@@ -2,6 +2,27 @@
 
 Comprehensive reference for working on the crypto trading bot across multiple computers.
 
+## 🚀 **QUICK REFERENCE** - Complete Workflow
+
+### **Start Work (ALWAYS FIRST):**
+```bash
+git pull
+```
+
+### **End Work (ALWAYS COMPLETE ALL STEPS):**
+```bash
+git add .
+git commit -m "type(scope): description"    # Use proper format!
+git push                                     # NEVER skip this!
+```
+
+### **Required Commit Format:**
+```bash
+git commit -m "feat(trading): add new feature"
+git commit -m "fix(api): handle timeout errors"  
+git commit -m "docs(readme): update instructions"
+```
+
 ## 🚀 Starting Work (ALWAYS DO THIS FIRST)
 
 ```bash
@@ -17,55 +38,106 @@ git pull
 
 ## 💾 Ending Work (ALWAYS DO THIS WHEN DONE)
 
-### Basic Workflow:
+### ⚠️ CRITICAL: Always Follow Complete Workflow
+**NEVER skip the push step!** Your changes must be backed up to the remote server.
+
+### Complete Workflow (Execute Every Step):
 ```bash
+# 1. Stage all changes
 git add .
-git commit -m "feat(scope): describe your changes"
+
+# 2. Commit with REQUIRED format (see format section below)
+git commit -m "type(scope): description"
+
+# 3. ALWAYS push to remote (NEVER skip this!)
 git push
 ```
 
 ### What Can Happen When Pushing:
 
-**✅ Success:** Changes pushed, you're done!
+**✅ Success:** Changes pushed to remote server, you're done!
 
 **❌ Push Rejected:** Someone else (your other computer) pushed changes
 ```bash
 git pull          # Get remote changes first
 # Handle any merge (see below)
-git push          # Now push your changes
+git push          # RETRY push after merge - REQUIRED!
+```
+
+**💡 Pro Tip:** If you're on a feature branch, the first push needs:
+```bash
+git push -u origin <branch-name>  # For new branches
+git push                          # For subsequent pushes
 ```
 
 ## 📝 Commit Message Format
 
-Your repository requires this specific format:
+⚠️ **MANDATORY FORMAT** - Your repository will REJECT commits that don't follow this format:
 
 ```
-<type>(scope): description
+<type>(<scope>): <subject>
+
+[optional body]
+
+[optional footer]
 ```
 
-### Types:
-- `feat` - New feature
-- `fix` - Bug fix  
-- `docs` - Documentation
-- `style` - Code formatting
-- `refactor` - Code restructuring
-- `test` - Adding tests
-- `chore` - Maintenance tasks
+### ✅ Required Components:
+1. **Type**: What kind of change (see list below)
+2. **Scope**: What area of code (see list below)  
+3. **Subject**: Brief description (1-50 chars, lowercase, no period)
 
-### Scopes:
-- `trading` - Trading logic
-- `api` - API interactions
-- `market` - Market monitoring
-- `config` - Configuration
-- `tests` - Test files
-- `docs` - Documentation
+### 📋 Valid Types:
+- `feat` - New feature or functionality
+- `fix` - Bug fix or error correction
+- `docs` - Documentation changes
+- `style` - Code formatting (no functional changes)
+- `refactor` - Code restructuring (no functional changes)
+- `test` - Adding or modifying tests
+- `chore` - Maintenance, dependencies, tooling
 
-### Examples:
+### 🎯 Valid Scopes:
+- `trading` - Trading logic, algorithms, strategies
+- `api` - API interactions, requests, responses
+- `market` - Market monitoring, data fetching
+- `config` - Configuration files, environment variables
+- `tests` - Test files, test utilities
+- `docs` - Documentation files, README updates
+
+### ✅ Good Examples:
 ```bash
-git commit -m "feat(trading): add trailing stop-loss feature"
-git commit -m "fix(api): handle rate limit errors gracefully"  
-git commit -m "chore(config): update dependencies"
+git commit -m "feat(trading): add dip buying strategy"
+git commit -m "fix(api): handle rate limit errors gracefully"
+git commit -m "chore(config): update python dependencies"
 git commit -m "docs(readme): add installation instructions"
+git commit -m "test(trading): add unit tests for stop loss"
+git commit -m "refactor(market): simplify price tracking logic"
+```
+
+### ❌ Bad Examples (Will Be Rejected):
+```bash
+git commit -m "added new feature"           # Missing type and scope
+git commit -m "fix: bug fix"                # Missing scope
+git commit -m "feat(invalid): new thing"   # Invalid scope
+git commit -m "FEAT(trading): NEW FEATURE" # Uppercase not allowed
+git commit -m "feat(trading): Add feature." # Period not allowed
+```
+
+### 💡 Commit Message Template:
+```bash
+# Basic commit
+git commit -m "feat(trading): add trailing stop adjustment"
+
+# With detailed body (use for complex changes)
+git commit -m "feat(trading): add sophisticated dip buying strategy
+
+Implement tiered capital allocation across multiple dip levels.
+Includes state persistence and configurable parameters.
+
+- Add DipBuyManager orchestration class  
+- Implement DipEvaluator decision engine
+- Add state persistence with JSON storage
+- Include comprehensive safety controls"
 ```
 
 ## 🔄 Handling Merges (Detailed)
@@ -174,6 +246,53 @@ git restore filename.py
 
 # Undo last commit (keep changes)
 git reset HEAD~1
+```
+
+## 🚨 CRITICAL: Why You MUST Always Push
+
+### ⚠️ **NEVER End a Session Without Pushing!**
+
+**What happens if you don't push:**
+- ❌ Changes only exist on current computer
+- ❌ Other computers won't see your work
+- ❌ Risk of losing work if computer crashes
+- ❌ Creates messy merge conflicts later
+- ❌ Breaks the two-computer workflow
+
+### ✅ **Benefits of Always Pushing:**
+- ✅ Work is backed up to GitHub immediately
+- ✅ Other computers get your changes instantly
+- ✅ Team members can see your progress
+- ✅ Creates clean, linear git history
+- ✅ Enables safe experimentation (can always revert)
+
+### 🔧 **Troubleshooting Push Issues:**
+
+**"Push rejected - non-fast-forward":**
+```bash
+git pull          # Get remote changes first
+git push          # Retry push after merge
+```
+
+**"Failed to push some refs":**
+```bash
+git status        # Check what's wrong
+git pull          # Usually need to pull first
+git push          # Retry after pull
+```
+
+**"Permission denied" or "Authentication failed":**
+```bash
+# Check if you're logged into GitHub
+git remote -v     # Verify remote URL
+# May need to re-authenticate with GitHub
+```
+
+### 💡 **Push Verification:**
+After `git push`, you should see:
+```
+To https://github.com/username/repo.git
+   abc1234..def5678  branch-name -> branch-name
 ```
 
 ## 🚨 Common Issues & Solutions
