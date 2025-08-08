@@ -30,6 +30,7 @@ class TradeManager:
         self._stop_events: Dict[str, threading.Event] = {}
         self._threads: Dict[str, threading.Thread] = {}
         self._lock = threading.Lock()
+        self._dip_manager = None  # Optional dip buy manager
         # Use absolute path relative to the script location
         project_root = Path(__file__).parent.parent
         self.persistence_file = project_root / "data" / "active_trades.json"
@@ -42,6 +43,11 @@ class TradeManager:
         
         # Flag to prevent file deletion during shutdown
         self._shutting_down = False
+    
+    def set_dip_manager(self, dip_manager) -> None:
+        """Set the dip buy manager for trade completion notifications."""
+        self._dip_manager = dip_manager
+        logging.info("Dip buy manager connected to TradeManager")
 
     def record_completed_trade(self, market: str, sell_price: Decimal, trigger_reason: str) -> None:
         """Record a completed trade to the completed trades file."""
@@ -89,6 +95,13 @@ class TradeManager:
             # Save updated completed trades
             self.completed_trades_file.write_text(json.dumps(completed_trades, indent=2))
             logging.info(f"Recorded completed trade for {market}: {profit_pct:+.2f}% profit/loss")
+            
+            # Notify dip manager if enabled and this was a trailing stop (profitable sale)
+            if self._dip_manager and trigger_reason == "trailing_stop":
+                try:
+                    self._dip_manager.on_trade_completed(market, sell_price, trigger_reason)
+                except Exception as dip_error:
+                    logging.error(f"Error notifying dip manager for {market}: {dip_error}")
             
         except Exception as e:
             logging.error(f"Failed to record completed trade for {market}: {e}")

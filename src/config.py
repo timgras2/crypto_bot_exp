@@ -1,6 +1,7 @@
 import os
 from decimal import Decimal, InvalidOperation
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -26,6 +27,31 @@ class APIConfig:
     base_url: str
     rate_limit: int  # requests per minute
     timeout: int  # seconds
+
+
+@dataclass
+class DipLevel:
+    """Configuration for a single dip buying level."""
+    threshold_pct: Decimal      # Percentage drop to trigger rebuy (e.g., 10%)
+    capital_allocation: Decimal # Portion of rebuy budget to use (e.g., 0.4 = 40%)
+    max_retries: int = 3       # Technical retry limit for this level
+
+
+@dataclass 
+class DipBuyConfig:
+    """Configuration for dip buying strategy."""
+    enabled: bool = False                    # Master feature toggle
+    monitoring_duration_hours: int = 48      # How long to monitor after sale
+    cooldown_hours: int = 4                  # Cooldown between rebuys per asset
+    max_rebuys_per_asset: int = 3           # Maximum rebuy attempts per asset
+    use_market_filter: bool = False         # Enable BTC trend filtering
+    
+    # Default dip levels: 40% at -10%, 35% at -20%, 25% at -35%
+    dip_levels: List[DipLevel] = field(default_factory=lambda: [
+        DipLevel(threshold_pct=Decimal('10'), capital_allocation=Decimal('0.4')),
+        DipLevel(threshold_pct=Decimal('20'), capital_allocation=Decimal('0.35')),
+        DipLevel(threshold_pct=Decimal('35'), capital_allocation=Decimal('0.25'))
+    ])
 
 
 def _validate_decimal_range(value: str, name: str, min_val: float, max_val: float) -> Decimal:
@@ -63,7 +89,77 @@ def _validate_api_credentials(api_key: str, api_secret: str) -> None:
         raise ValueError("API secret contains invalid characters")
 
 
-def load_config() -> tuple[TradingConfig, APIConfig]:
+def _parse_dip_levels(levels_str: str) -> List[DipLevel]:
+    """Parse dip levels from environment variable string.
+    
+    Format: "10:0.4,20:0.35,35:0.25" (threshold_pct:allocation,...)
+    """
+    if not levels_str.strip():
+        # Return default levels if empty
+        return [
+            DipLevel(threshold_pct=Decimal('10'), capital_allocation=Decimal('0.4')),
+            DipLevel(threshold_pct=Decimal('20'), capital_allocation=Decimal('0.35')),
+            DipLevel(threshold_pct=Decimal('35'), capital_allocation=Decimal('0.25'))
+        ]
+    
+    levels = []
+    total_allocation = Decimal('0')
+    
+    for level_spec in levels_str.split(','):
+        level_spec = level_spec.strip()
+        if ':' not in level_spec:
+            raise ValueError(f"Invalid dip level format: '{level_spec}'. Expected 'threshold:allocation'")
+        
+        threshold_str, allocation_str = level_spec.split(':', 1)
+        
+        try:
+            threshold = _validate_decimal_range(threshold_str.strip(), "dip threshold", 1.0, 90.0)
+            allocation = _validate_decimal_range(allocation_str.strip(), "capital allocation", 0.01, 1.0)
+            total_allocation += allocation
+            
+            levels.append(DipLevel(
+                threshold_pct=threshold,
+                capital_allocation=allocation
+            ))
+        except ValueError as e:
+            raise ValueError(f"Invalid dip level '{level_spec}': {e}")
+    
+    # Validate total allocation doesn't exceed 100%
+    if total_allocation > Decimal('1.0'):
+        raise ValueError(f"Total dip level allocation {total_allocation:.2f} exceeds 100%")
+    
+    # Sort by threshold ascending (smallest dips first)
+    levels.sort(key=lambda x: x.threshold_pct)
+    
+    return levels
+
+
+def _load_dip_config() -> DipBuyConfig:
+    """Load dip buying configuration from environment variables."""
+    enabled = os.getenv("DIP_BUY_ENABLED", "false").lower() in ('true', '1', 'yes', 'on')
+    
+    if not enabled:
+        # Return disabled config with defaults
+        return DipBuyConfig(enabled=False)
+    
+    # Parse configuration only if enabled
+    return DipBuyConfig(
+        enabled=True,
+        monitoring_duration_hours=_validate_int_range(
+            os.getenv("DIP_MONITORING_HOURS", "48"), "DIP_MONITORING_HOURS", 1, 168  # Max 1 week
+        ),
+        cooldown_hours=_validate_int_range(
+            os.getenv("DIP_COOLDOWN_HOURS", "4"), "DIP_COOLDOWN_HOURS", 1, 48
+        ),
+        max_rebuys_per_asset=_validate_int_range(
+            os.getenv("DIP_MAX_REBUYS_PER_ASSET", "3"), "DIP_MAX_REBUYS_PER_ASSET", 1, 10
+        ),
+        use_market_filter=os.getenv("DIP_USE_MARKET_FILTER", "false").lower() in ('true', '1', 'yes', 'on'),
+        dip_levels=_parse_dip_levels(os.getenv("DIP_LEVELS", ""))
+    )
+
+
+def load_config() -> tuple[TradingConfig, APIConfig, DipBuyConfig]:
     """Load and validate configuration."""
     # Validate required environment variables
     required_vars = ["BITVAVO_API_KEY", "BITVAVO_API_SECRET"]
@@ -120,4 +216,7 @@ def load_config() -> tuple[TradingConfig, APIConfig]:
         )
     )
 
-    return trading_config, api_config
+    # Load dip buy configuration
+    dip_config = _load_dip_config()
+
+    return trading_config, api_config, dip_config

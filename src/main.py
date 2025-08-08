@@ -12,7 +12,7 @@ from trade_logic import TradeManager
 class TradingBot:
     def __init__(self) -> None:
         # Load configuration
-        self.trading_config, self.api_config = load_config()
+        self.trading_config, self.api_config, self.dip_config = load_config()
 
         # Initialize components
         self.api = BitvavoAPI(self.api_config)
@@ -21,6 +21,28 @@ class TradingBot:
             storage_path=Path("data") / "previous_markets.json"
         )
         self.trade_manager = TradeManager(self.api, self.trading_config)
+        
+        # Initialize dip buy manager (conditional)
+        self.dip_manager = None
+        if self.dip_config.enabled:
+            try:
+                import sys
+                sys.path.insert(0, str(Path(__file__).parent.parent))
+                from future_work.dip_buy_manager import DipBuyManager
+                data_dir = Path("data")
+                self.dip_manager = DipBuyManager(
+                    api=self.api,
+                    config=self.dip_config,
+                    max_trade_amount=self.trading_config.max_trade_amount,
+                    data_dir=data_dir,
+                    check_interval=self.trading_config.check_interval
+                )
+                # Connect dip manager to trade manager
+                self.trade_manager.set_dip_manager(self.dip_manager)
+                logging.info("Dip buy manager initialized and connected")
+            except ImportError as e:
+                logging.warning(f"Failed to import dip buy manager: {e}")
+                self.dip_config.enabled = False
 
         # Initialize state
         self.previous_markets = self.market_tracker.load_previous_markets()
@@ -28,6 +50,10 @@ class TradingBot:
         
         # Restore any previously active trades
         self.trade_manager.restore_monitoring()
+        
+        # Start dip buying service if enabled
+        if self.dip_manager:
+            self.dip_manager.start()
 
         # Setup signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self.handle_shutdown)
@@ -43,6 +69,11 @@ class TradingBot:
         """Perform cleanup operations."""
         print("🔄 Preparing for graceful shutdown...")
         logging.info("Shutting down bot...")
+        
+        # Stop dip buying service first
+        if self.dip_manager:
+            self.dip_manager.stop()
+            print("🛑 Dip buy monitoring stopped")
         
         # Prepare trade manager for shutdown (prevents file deletion)
         self.trade_manager.prepare_for_shutdown()
@@ -78,6 +109,15 @@ class TradingBot:
         print(f"💰 Max trade amount: €{self.trading_config.max_trade_amount}")
         print(f"🔄 Checking every {self.trading_config.check_interval} seconds")
         print(f"📈 Stop loss: {self.trading_config.min_profit_pct}% | Trailing stop: {self.trading_config.trailing_pct}%")
+        
+        # Show dip buying status
+        if self.dip_config.enabled:
+            print(f"🎯 Dip buying: ENABLED")
+            levels_str = ", ".join([f"-{level.threshold_pct}%" for level in self.dip_config.dip_levels])
+            print(f"📊 Dip levels: {levels_str}")
+        else:
+            print(f"🎯 Dip buying: DISABLED")
+        
         print("-" * 60)
         
         # Check if this is first run
