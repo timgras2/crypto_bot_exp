@@ -17,6 +17,10 @@ crypto_bot_main/
 │   ├── requests_handler.py   # BitvavoAPI wrapper with rate limiting
 │   ├── market_utils.py       # MarketTracker for new listings detection
 │   ├── trade_logic.py        # TradeManager for execution and monitoring
+│   ├── asset_protection_manager.py # Asset protection orchestration
+│   ├── volatility_calculator.py    # Dynamic volatility-based risk management
+│   ├── protected_asset_state.py    # Thread-safe asset protection state
+│   ├── circuit_breaker.py          # System stability protection
 │   └── crypto_bot.egg-info/  # Package metadata (auto-generated)
 ├── simulator/                # Trading strategy simulator
 │   ├── __init__.py          # Package initialization
@@ -36,7 +40,9 @@ crypto_bot_main/
 │   ├── test_config.py       # Configuration validation tests
 │   ├── test_market_utils.py # Market tracking tests
 │   ├── test_requests_handler.py # API wrapper tests
-│   └── test_trade_logic.py  # Trade execution and monitoring tests
+│   ├── test_trade_logic.py  # Trade execution and monitoring tests
+│   ├── test_asset_protection.py # Asset protection unit tests (44 tests)
+│   └── test_asset_protection_integration.py # Asset protection integration tests (11 tests)
 ├── data/                    # Data persistence directory
 │   ├── README.md           # Data directory documentation
 │   ├── previous_markets.json # Historical market listings
@@ -57,6 +63,7 @@ crypto_bot_main/
 ├── .env.example         # Environment variables template
 ├── CLAUDE.md           # This file - main development guide
 ├── CLAUDE_DIP_BUY.md   # Comprehensive dip buying strategy guide
+├── CLAUDE_ASSET_PROTECTION.md # Asset protection strategy guide
 ├── CLAUDE_SIMULATOR.md # Detailed simulator documentation
 ├── QUICKSTART.md       # Quick setup guide
 ├── SAFETY_CHECKLIST.md # Pre-trading safety checks
@@ -72,8 +79,10 @@ The main trading bot consists of:
 - **TradingBot** (`main.py`): Main orchestrator class with graceful shutdown handling
 - **MarketTracker** (`market_utils.py`): Monitors for new token listings on the exchange
 - **TradeManager** (`trade_logic.py`): Handles trade execution and trailing stop-loss monitoring
+- **AssetProtectionManager** (`asset_protection_manager.py`): Protects existing assets with DCA and profit taking
 - **BitvavoAPI** (`requests_handler.py`): Rate-limited API wrapper with retry logic
 - **Configuration** (`config.py`): Centralized configuration management with dataclasses
+- **CircuitBreaker** (`circuit_breaker.py`): System stability protection against cascade failures
 
 ## Environment Configuration
 
@@ -97,6 +106,30 @@ RATE_LIMIT=300              # API requests per minute
 API_TIMEOUT=30              # API request timeout (seconds)
 OPERATOR_ID=1001            # Required by Bitvavo API for order identification
 BITVAVO_BASE_URL=https://api.bitvavo.com/v2  # API base URL
+```
+
+Asset protection parameters (optional):
+```
+# Asset Protection Strategy
+ASSET_PROTECTION_ENABLED=false           # Enable/disable asset protection
+PROTECTED_ASSETS=BTC-EUR,ETH-EUR         # Assets to protect (comma-separated)
+MAX_PROTECTION_BUDGET=100.0              # Maximum EUR for protection operations
+BASE_STOP_LOSS_PCT=15.0                  # Base stop loss percentage
+VOLATILITY_MULTIPLIER=1.5                # Volatility adjustment multiplier
+
+# DCA (Dollar Cost Averaging) Configuration
+DCA_ENABLED=true                         # Enable DCA buying on dips
+DCA_LEVELS=10:0.3,20:0.4,30:0.3         # Dip levels (threshold_pct:allocation)
+
+# Profit Taking Configuration
+PROFIT_TAKING_ENABLED=true               # Enable profit taking on pumps
+PROFIT_TAKING_LEVELS=20:0.25,40:0.5     # Profit levels (threshold_pct:allocation)
+
+# Portfolio Management
+REBALANCING_ENABLED=false                # Enable portfolio rebalancing
+TARGET_ALLOCATIONS=BTC-EUR:0.6,ETH-EUR:0.4  # Target allocations
+MAX_DAILY_TRADES=10                      # Maximum trades per day per asset
+EMERGENCY_STOP_LOSS_PCT=25.0             # Emergency stop loss threshold
 ```
 
 ## Common Development Commands
@@ -203,7 +236,18 @@ The bot uses threading for concurrent operations:
 - **Input Validation**: Extensive validation of all trading parameters and market names
 
 ### Advanced Features (Optional)
-- **Dip Buying Strategy**: Automatically rebuy assets after profitable sales when price drops
+
+#### Asset Protection Strategy
+- **Dynamic Volatility-Based Stop Losses**: Risk-adjusted stop losses based on market volatility
+- **Multi-Level DCA Buying**: Automatically buy dips at configurable price thresholds
+- **Profit Taking on Pumps**: Sell portions of positions at profit targets
+- **Portfolio Rebalancing**: Maintain target asset allocations automatically
+- **Emergency Stop Loss**: Hard limit protection against severe losses
+- **Daily Budget Management**: Prevent excessive trading with daily limits
+- **Circuit Breaker Protection**: System stability against API failures
+
+#### Dip Buying Strategy  
+- **Post-Sale Monitoring**: Automatically rebuy assets after profitable sales when price drops
 - **Multi-Level Dip Tracking**: Configure multiple price thresholds with different capital allocations
 - **Market Condition Filtering**: Optional BTC trend analysis to gate rebuy decisions
 - **Thread-Safe State Management**: Robust persistence with atomic operations and recovery
