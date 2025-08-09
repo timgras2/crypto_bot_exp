@@ -12,7 +12,7 @@ from trade_logic import TradeManager
 class TradingBot:
     def __init__(self) -> None:
         # Load configuration
-        self.trading_config, self.api_config, self.dip_config = load_config()
+        self.trading_config, self.api_config, self.dip_config, self.asset_protection_config = load_config()
 
         # Initialize components
         self.api = BitvavoAPI(self.api_config)
@@ -44,6 +44,24 @@ class TradingBot:
                 logging.warning(f"Failed to import dip buy manager: {e}")
                 self.dip_config.enabled = False
 
+        # Initialize asset protection manager (conditional)
+        self.asset_protection_manager = None
+        if self.asset_protection_config.enabled:
+            try:
+                from asset_protection_manager import AssetProtectionManager
+                data_dir = Path("data")
+                self.asset_protection_manager = AssetProtectionManager(
+                    api=self.api,
+                    config=self.asset_protection_config,
+                    trading_config=self.trading_config,
+                    data_dir=data_dir,
+                    check_interval=30  # Check every 30 seconds for asset protection
+                )
+                logging.info("Asset protection manager initialized")
+            except ImportError as e:
+                logging.warning(f"Failed to import asset protection manager: {e}")
+                self.asset_protection_config.enabled = False
+
         # Initialize state
         self.previous_markets = self.market_tracker.load_previous_markets()
         self.running = True
@@ -54,6 +72,10 @@ class TradingBot:
         # Start dip buying service if enabled
         if self.dip_manager:
             self.dip_manager.start()
+
+        # Start asset protection service if enabled
+        if self.asset_protection_manager:
+            self.asset_protection_manager.start()
 
         # Setup signal handlers for graceful shutdown
         signal.signal(signal.SIGINT, self.handle_shutdown)
@@ -74,6 +96,11 @@ class TradingBot:
         if self.dip_manager:
             self.dip_manager.stop()
             print("🛑 Dip buy monitoring stopped")
+            
+        # Stop asset protection service
+        if self.asset_protection_manager:
+            self.asset_protection_manager.stop()
+            print("🛡️  Asset protection monitoring stopped")
         
         # Prepare trade manager for shutdown (prevents file deletion)
         self.trade_manager.prepare_for_shutdown()
@@ -117,6 +144,25 @@ class TradingBot:
             print(f"📊 Dip levels: {levels_str}")
         else:
             print(f"🎯 Dip buying: DISABLED")
+            
+        # Show asset protection status
+        if self.asset_protection_config.enabled:
+            print(f"🛡️  Asset protection: ENABLED")
+            if self.asset_protection_config.protected_assets:
+                assets_str = ", ".join(self.asset_protection_config.protected_assets)
+                print(f"🔒 Protected assets: {assets_str}")
+                print(f"💰 Protection budget: €{self.asset_protection_config.max_protection_budget}")
+            
+            # Show DCA and profit taking levels if enabled
+            if self.asset_protection_config.dca_enabled and self.asset_protection_config.dca_levels:
+                dca_str = ", ".join([f"-{level.threshold_pct}%" for level in self.asset_protection_config.dca_levels])
+                print(f"📊 DCA levels: {dca_str}")
+            
+            if self.asset_protection_config.profit_taking_enabled and self.asset_protection_config.profit_levels:
+                profit_str = ", ".join([f"+{level.threshold_pct}%" for level in self.asset_protection_config.profit_levels])
+                print(f"💸 Profit levels: {profit_str}")
+        else:
+            print(f"🛡️  Asset protection: DISABLED")
         
         print("-" * 60)
         
