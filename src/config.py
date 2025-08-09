@@ -1,10 +1,13 @@
 import os
+import logging
 from decimal import Decimal, InvalidOperation
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Dict
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -52,6 +55,51 @@ class DipBuyConfig:
         DipLevel(threshold_pct=Decimal('20'), capital_allocation=Decimal('0.35')),
         DipLevel(threshold_pct=Decimal('35'), capital_allocation=Decimal('0.25'))
     ])
+
+
+@dataclass
+class ProfitLevel:
+    """Configuration for a profit taking level."""
+    threshold_pct: Decimal      # Percentage gain to trigger sell (e.g., 20%)
+    position_allocation: Decimal # Portion of position to sell (e.g., 0.25 = 25%)
+
+
+@dataclass
+class AssetProtectionConfig:
+    """Configuration for asset protection strategy."""
+    enabled: bool = False                    # Master feature toggle
+    protected_assets: List[str] = field(default_factory=list)  # Assets to protect (e.g., ['BTC-EUR', 'ETH-EUR'])
+    max_protection_budget: Decimal = Decimal('100.0')  # Maximum EUR for protection operations
+    
+    # Volatility-based stop loss
+    base_stop_loss_pct: Decimal = Decimal('15.0')      # Base stop loss percentage
+    volatility_window_hours: int = 24                   # Hours to calculate volatility
+    volatility_multiplier: Decimal = Decimal('1.5')    # Adjust stop based on volatility
+    
+    # DCA buying on dips
+    dca_enabled: bool = True
+    dca_levels: List[DipLevel] = field(default_factory=lambda: [
+        DipLevel(threshold_pct=Decimal('10'), capital_allocation=Decimal('0.3')),
+        DipLevel(threshold_pct=Decimal('20'), capital_allocation=Decimal('0.4')),
+        DipLevel(threshold_pct=Decimal('30'), capital_allocation=Decimal('0.3'))
+    ])
+    
+    # Profit taking on pumps
+    profit_taking_enabled: bool = True
+    profit_levels: List[ProfitLevel] = field(default_factory=lambda: [
+        ProfitLevel(threshold_pct=Decimal('20'), position_allocation=Decimal('0.25')),
+        ProfitLevel(threshold_pct=Decimal('40'), position_allocation=Decimal('0.5'))
+    ])
+    
+    # Portfolio rebalancing
+    rebalancing_enabled: bool = False
+    rebalancing_threshold_pct: Decimal = Decimal('10.0') # Trigger rebalancing when allocation drifts >10%
+    target_allocations: Dict[str, Decimal] = field(default_factory=dict)  # e.g., {'BTC-EUR': 0.6, 'ETH-EUR': 0.4}
+    
+    # Risk management
+    max_daily_trades: int = 10              # Maximum trades per day per asset
+    emergency_stop_loss_pct: Decimal = Decimal('25.0')  # Emergency stop if loss exceeds this
+    position_size_limit_pct: Decimal = Decimal('50.0')  # Max percentage of budget per asset
 
 
 def _validate_decimal_range(value: str, name: str, min_val: float, max_val: float) -> Decimal:
@@ -134,6 +182,142 @@ def _parse_dip_levels(levels_str: str) -> List[DipLevel]:
     return levels
 
 
+def _parse_profit_levels(levels_str: str) -> List[ProfitLevel]:
+    """Parse profit taking levels from environment variable string.
+    
+    Format: "20:0.25,40:0.5" (threshold_pct:position_allocation,...)
+    """
+    if not levels_str.strip():
+        # Return default levels if empty
+        return [
+            ProfitLevel(threshold_pct=Decimal('20'), position_allocation=Decimal('0.25')),
+            ProfitLevel(threshold_pct=Decimal('40'), position_allocation=Decimal('0.5'))
+        ]
+    
+    levels = []
+    
+    for level_spec in levels_str.split(','):
+        level_spec = level_spec.strip()
+        if ':' not in level_spec:
+            raise ValueError(f"Invalid profit level format: '{level_spec}'. Expected 'threshold:allocation'")
+        
+        threshold_str, allocation_str = level_spec.split(':', 1)
+        
+        try:
+            threshold = _validate_decimal_range(threshold_str.strip(), "profit threshold", 1.0, 1000.0)
+            allocation = _validate_decimal_range(allocation_str.strip(), "position allocation", 0.01, 1.0)
+            
+            levels.append(ProfitLevel(
+                threshold_pct=threshold,
+                position_allocation=allocation
+            ))
+        except ValueError as e:
+            raise ValueError(f"Invalid profit level '{level_spec}': {e}")
+    
+    # Sort by threshold ascending (smallest gains first)
+    levels.sort(key=lambda x: x.threshold_pct)
+    
+    return levels
+
+
+def _parse_protected_assets(assets_str: str) -> List[str]:
+    """Parse protected assets from environment variable string.
+    
+    Format: "BTC-EUR,ETH-EUR,ADA-EUR"
+    """
+    import re
+    
+    if not assets_str.strip():
+        return []
+    
+    # Enhanced regex pattern for market validation
+    # Matches: 2-10 uppercase alphanumeric characters, dash, 3 uppercase letters
+    market_pattern = re.compile(r'^[A-Z0-9]{2,10}-[A-Z]{3}$')
+    
+    assets = []
+    for asset in assets_str.split(','):
+        asset = asset.strip().upper()  # Normalize to uppercase
+        if not asset:
+            continue
+            
+        # Validate market format with regex
+        if not market_pattern.match(asset):
+            raise ValueError(
+                f"Invalid market format: '{asset}'. "
+                f"Expected format: 'SYMBOL-CURRENCY' (e.g., 'BTC-EUR', 'ETH-USD'). "
+                f"Symbol must be 2-10 alphanumeric characters, currency must be 3 letters."
+            )
+            
+        # Additional validation for common patterns
+        parts = asset.split('-')
+        symbol, currency = parts[0], parts[1]
+        
+        # Validate symbol length and characters
+        if len(symbol) < 2 or len(symbol) > 10:
+            raise ValueError(f"Invalid symbol length: '{symbol}'. Must be 2-10 characters.")
+            
+        # Validate currency (common crypto quote currencies)
+        valid_currencies = {'EUR', 'USD', 'BTC', 'ETH', 'USDT', 'USDC', 'BNB'}
+        if currency not in valid_currencies:
+            logger.warning(f"Uncommon quote currency '{currency}' for {asset}. "
+                         f"Common currencies: {', '.join(sorted(valid_currencies))}")
+            
+        assets.append(asset)
+    
+    return assets
+
+
+def _parse_target_allocations(allocations_str: str) -> Dict[str, Decimal]:
+    """Parse target allocations from environment variable string.
+    
+    Format: "BTC-EUR:0.6,ETH-EUR:0.4"
+    """
+    import re
+    
+    if not allocations_str.strip():
+        return {}
+    
+    # Regex pattern for asset validation (reuse the same pattern)
+    market_pattern = re.compile(r'^[A-Z0-9]{2,10}-[A-Z]{3}$')
+    
+    allocations = {}
+    total_allocation = Decimal('0')
+    
+    for allocation_spec in allocations_str.split(','):
+        allocation_spec = allocation_spec.strip()
+        if ':' not in allocation_spec:
+            raise ValueError(f"Invalid allocation format: '{allocation_spec}'. Expected 'ASSET:percentage'")
+        
+        asset, allocation_str = allocation_spec.split(':', 1)
+        asset = asset.strip().upper()  # Normalize to uppercase
+        allocation_str = allocation_str.strip()
+        
+        # Validate asset format
+        if not market_pattern.match(asset):
+            raise ValueError(
+                f"Invalid asset format in allocation: '{asset}'. "
+                f"Expected format: 'SYMBOL-CURRENCY' (e.g., 'BTC-EUR')"
+            )
+        
+        try:
+            allocation = _validate_decimal_range(allocation_str, "target allocation", 0.01, 1.0)
+            total_allocation += allocation
+            allocations[asset] = allocation
+        except ValueError as e:
+            raise ValueError(f"Invalid target allocation '{allocation_spec}': {e}")
+    
+    # Validate total allocation doesn't exceed 100%
+    if total_allocation > Decimal('1.0'):
+        raise ValueError(f"Total target allocation {total_allocation:.2f} exceeds 100%")
+    
+    # Warn if total allocation is significantly less than 100%
+    if total_allocation < Decimal('0.8'):
+        logger.warning(f"Target allocations only sum to {total_allocation:.1%}. "
+                      f"Consider allocating closer to 100% for better portfolio balance.")
+    
+    return allocations
+
+
 def _load_dip_config() -> DipBuyConfig:
     """Load dip buying configuration from environment variables."""
     enabled = os.getenv("DIP_BUY_ENABLED", "false").lower() in ('true', '1', 'yes', 'on')
@@ -159,7 +343,52 @@ def _load_dip_config() -> DipBuyConfig:
     )
 
 
-def load_config() -> tuple[TradingConfig, APIConfig, DipBuyConfig]:
+def _load_asset_protection_config() -> AssetProtectionConfig:
+    """Load asset protection configuration from environment variables."""
+    enabled = os.getenv("ASSET_PROTECTION_ENABLED", "false").lower() in ('true', '1', 'yes', 'on')
+    
+    if not enabled:
+        # Return disabled config with defaults
+        return AssetProtectionConfig(enabled=False)
+    
+    # Parse configuration only if enabled
+    return AssetProtectionConfig(
+        enabled=True,
+        protected_assets=_parse_protected_assets(os.getenv("PROTECTED_ASSETS", "")),
+        max_protection_budget=_validate_decimal_range(
+            os.getenv("MAX_PROTECTION_BUDGET", "100.0"), "MAX_PROTECTION_BUDGET", 10.0, 100000.0
+        ),
+        base_stop_loss_pct=_validate_decimal_range(
+            os.getenv("BASE_STOP_LOSS_PCT", "15.0"), "BASE_STOP_LOSS_PCT", 1.0, 50.0
+        ),
+        volatility_window_hours=_validate_int_range(
+            os.getenv("VOLATILITY_WINDOW_HOURS", "24"), "VOLATILITY_WINDOW_HOURS", 1, 168
+        ),
+        volatility_multiplier=_validate_decimal_range(
+            os.getenv("VOLATILITY_MULTIPLIER", "1.5"), "VOLATILITY_MULTIPLIER", 0.5, 5.0
+        ),
+        dca_enabled=os.getenv("DCA_ENABLED", "true").lower() in ('true', '1', 'yes', 'on'),
+        dca_levels=_parse_dip_levels(os.getenv("DCA_LEVELS", "10:0.3,20:0.4,30:0.3")),
+        profit_taking_enabled=os.getenv("PROFIT_TAKING_ENABLED", "true").lower() in ('true', '1', 'yes', 'on'),
+        profit_levels=_parse_profit_levels(os.getenv("PROFIT_TAKING_LEVELS", "")),
+        rebalancing_enabled=os.getenv("REBALANCING_ENABLED", "false").lower() in ('true', '1', 'yes', 'on'),
+        rebalancing_threshold_pct=_validate_decimal_range(
+            os.getenv("REBALANCING_THRESHOLD_PCT", "10.0"), "REBALANCING_THRESHOLD_PCT", 1.0, 50.0
+        ),
+        target_allocations=_parse_target_allocations(os.getenv("TARGET_ALLOCATIONS", "")),
+        max_daily_trades=_validate_int_range(
+            os.getenv("MAX_DAILY_TRADES", "10"), "MAX_DAILY_TRADES", 1, 100
+        ),
+        emergency_stop_loss_pct=_validate_decimal_range(
+            os.getenv("EMERGENCY_STOP_LOSS_PCT", "25.0"), "EMERGENCY_STOP_LOSS_PCT", 5.0, 90.0
+        ),
+        position_size_limit_pct=_validate_decimal_range(
+            os.getenv("POSITION_SIZE_LIMIT_PCT", "50.0"), "POSITION_SIZE_LIMIT_PCT", 5.0, 100.0
+        )
+    )
+
+
+def load_config() -> tuple[TradingConfig, APIConfig, DipBuyConfig, AssetProtectionConfig]:
     """Load and validate configuration."""
     # Validate required environment variables
     required_vars = ["BITVAVO_API_KEY", "BITVAVO_API_SECRET"]
@@ -219,4 +448,7 @@ def load_config() -> tuple[TradingConfig, APIConfig, DipBuyConfig]:
     # Load dip buy configuration
     dip_config = _load_dip_config()
 
-    return trading_config, api_config, dip_config
+    # Load asset protection configuration
+    asset_protection_config = _load_asset_protection_config()
+
+    return trading_config, api_config, dip_config, asset_protection_config
