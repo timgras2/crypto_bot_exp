@@ -1,12 +1,35 @@
+# Environment and secrets
 .env
+
+# Python cache and compiled files
 __pycache__/
 *.pyc
 *.pyo
 *.egg-info/
 .pytest_cache/
 .coverage
+
+# Log files
 *.log
 logs/*.log
+
+# Data files (runtime generated)
 data/previous_markets.json
 data/active_trades.json
 data/completed_trades.json
+
+# Simulation results and temporary data
+simulator/results/*.json
+simulator/results/*.txt
+simulator/temp_data/
+test_temp/
+
+# Development artifacts
+src/data/
+.claude/
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

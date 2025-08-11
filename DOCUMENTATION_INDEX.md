@@ -19,7 +19,13 @@ This project contains comprehensive documentation for all components and feature
 
 ## 🔧 Feature-Specific Documentation
 
-### **CLAUDE_DIP_BUY.md** - Dip Buying Strategy (v2.0)
+### **docs/CLAUDE_ASSET_PROTECTION.md** - Asset Protection Strategy
+- **Comprehensive guide** for asset protection features
+- Swing trading and adaptive strategies
+- Bear market protection mechanisms
+- Configuration reference and examples
+
+### **docs/CLAUDE_DIP_BUY.md** - Dip Buying Strategy (v2.0)
 - **Comprehensive guide** for the advanced dip buying feature
 - Architecture and component overview
 - Configuration reference with all parameters
@@ -28,14 +34,21 @@ This project contains comprehensive documentation for all components and feature
 - Debugging guide with validation error messages
 - Thread safety and performance considerations
 
-### **SIMULATOR_ARCHITECTURE.md** - Trading Strategy Simulator
+### **docs/ENHANCED_FEATURES_SUMMARY.md** - Enhanced Bear Market Protection
+- **Latest features** for improved bear market protection
+- Adaptive market regime detection
+- Progressive stop-loss mechanisms
+- Multi-scenario testing capabilities
+- Performance improvements and benefits
+
+### **docs/SIMULATOR_ARCHITECTURE.md** - Trading Strategy Simulator
 - Complete simulator architecture overview
 - Historical backtesting capabilities
 - Performance analysis and reporting
 - Configuration options and best practices
 - Integration with dip buying strategy
 
-### **CLAUDE_SIMULATOR.md** - Detailed Simulator Guide
+### **docs/CLAUDE_SIMULATOR.md** - Detailed Simulator Guide
 - Step-by-step simulator usage
 - Strategy testing methodologies
 - Result interpretation guidelines
@@ -43,19 +56,19 @@ This project contains comprehensive documentation for all components and feature
 
 ## 🔧 Technical References
 
-### **BITVAVO_API_UPDATE.md** - API Changes
+### **docs/BITVAVO_API_UPDATE.md** - API Changes
 - Recent Bitvavo API updates and requirements
 - operatorId parameter implementation
 - Breaking changes and migration guide
 - Error handling patterns
 
-### **GIT_WORKFLOW.md** - Development Workflow
+### **docs/GIT_WORKFLOW.md** - Development Workflow
 - Git branching strategy
 - Commit message standards
 - Code review process
 - Release management
 
-### **SAFETY_CHECKLIST.md** - Pre-Trading Safety
+### **docs/SAFETY_CHECKLIST.md** - Pre-Trading Safety
 - Essential safety checks before live trading
 - Configuration validation steps
 - Risk management guidelines
@@ -63,13 +76,13 @@ This project contains comprehensive documentation for all components and feature
 
 ## 📝 Usage Documentation
 
-### **FIRST_RUN_BEHAVIOR.md** - Initial Setup
+### **docs/FIRST_RUN_BEHAVIOR.md** - Initial Setup
 - What to expect on first run
 - Common initial issues and solutions
 - Configuration validation process
 - State initialization behavior
 
-### **TERMINAL_OUTPUT_EXAMPLE.md** - Expected Output
+### **docs/TERMINAL_OUTPUT_EXAMPLE.md** - Expected Output
 - Example terminal output during operation
 - Log message interpretation
 - Status indicators and their meanings
@@ -131,19 +144,22 @@ This project contains comprehensive documentation for all components and feature
 
 ## 🚀 Getting Started Workflow
 
-1. **New Developers**: Start with `QUICKSTART.md`
-2. **Dip Buying Feature**: Read `CLAUDE_DIP_BUY.md` for comprehensive guide
-3. **Strategy Testing**: Use `SIMULATOR_ARCHITECTURE.md` for backtesting
-4. **Production Deployment**: Follow `SAFETY_CHECKLIST.md`
-5. **Development Work**: Reference `CLAUDE.md` for architecture details
+1. **New Developers**: Start with `docs/QUICKSTART.md`
+2. **Asset Protection**: Read `docs/CLAUDE_ASSET_PROTECTION.md` for swing trading features
+3. **Dip Buying Feature**: Read `docs/CLAUDE_DIP_BUY.md` for comprehensive guide
+4. **Enhanced Features**: Check `docs/ENHANCED_FEATURES_SUMMARY.md` for latest improvements
+5. **Strategy Testing**: Use `docs/SIMULATOR_ARCHITECTURE.md` for backtesting
+6. **Production Deployment**: Follow `docs/SAFETY_CHECKLIST.md`
+7. **Development Work**: Reference `CLAUDE.md` for architecture details
 
 ## 📞 Support and Troubleshooting
 
 ### Common Issues
 - **Unicode Errors**: See Unicode section in `CLAUDE.md`
-- **Dip Strategy Issues**: Check validation errors in `CLAUDE_DIP_BUY.md`
-- **Simulator Problems**: Reference `SIMULATOR_ARCHITECTURE.md`
-- **API Errors**: Review `BITVAVO_API_UPDATE.md`
+- **Asset Protection Issues**: Check `docs/CLAUDE_ASSET_PROTECTION.md`
+- **Dip Strategy Issues**: Check validation errors in `docs/CLAUDE_DIP_BUY.md`
+- **Simulator Problems**: Reference `docs/SIMULATOR_ARCHITECTURE.md`
+- **API Errors**: Review `docs/BITVAVO_API_UPDATE.md`
 
 ### Debug Resources
 - Log message patterns in component-specific guides

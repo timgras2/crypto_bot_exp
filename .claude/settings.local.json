@@ -11,7 +11,11 @@
       "Bash(DIP_BUY_ENABLED=true DIP_LEVELS=\"15:0.6,30:0.4\" python -c \"from config import load_config; _, _, dip = load_config(); print(''Dip levels:'', [(l.threshold_pct, l.capital_allocation) for l in dip.dip_levels])\")",
       "Bash(chcp 65001)",
       "Bash(python test_dip_integration.py)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(find:*)",
+      "Bash(python test:*)",
+      "Bash(python:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
   }

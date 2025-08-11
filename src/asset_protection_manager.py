@@ -221,6 +221,10 @@ class AssetProtectionManager:
             # Check profit taking opportunities
             if self.config.profit_taking_enabled:
                 self._check_profit_taking_opportunities(market, asset_info, current_price)
+            
+            # Check swing trading opportunities
+            if self.config.swing_trading_enabled:
+                self._check_swing_trading_opportunities(market, asset_info, current_price)
                 
         except Exception as e:
             logger.error(f"Error checking opportunities for {market}: {e}")
@@ -321,6 +325,194 @@ class AssetProtectionManager:
                         
         except Exception as e:
             logger.error(f"Error checking profit taking opportunities for {market}: {e}")
+    
+    def _check_swing_trading_opportunities(self, market: str, asset_info: ProtectedAssetInfo, current_price: Decimal) -> None:
+        """Check for swing trading opportunities (sell on drops, rebuy on bigger drops)."""
+        if not self.config.swing_trading_enabled:
+            return
+            
+        try:
+            # Use swing entry price if available, otherwise use original entry price
+            base_price = asset_info.swing_entry_price or asset_info.entry_price
+            
+            # Calculate current drop percentage from base price
+            drop_pct = ((base_price - current_price) / base_price) * 100
+            
+            # Process swing levels in order
+            for i, swing_level in enumerate(self.config.swing_levels, 1):
+                if drop_pct >= swing_level.threshold_pct:
+                    
+                    if swing_level.action == 'sell':
+                        # Check if this sell level is already completed
+                        if i not in asset_info.completed_swing_sell_levels:
+                            logger.info(f"🔄 SWING SELL opportunity: {market} level {i} at {drop_pct:.1f}% drop")
+                            
+                            # Execute swing sell
+                            if self._execute_swing_sell(market, swing_level.allocation, i, drop_pct):
+                                print(f"📉 SWING SELL: {market} Level {i} - {swing_level.allocation:.0%} at €{current_price}")
+                    
+                    elif swing_level.action == 'rebuy':
+                        # Check if this rebuy level is already completed
+                        if i not in asset_info.completed_swing_rebuy_levels:
+                            logger.info(f"🔄 SWING REBUY opportunity: {market} level {i} at {drop_pct:.1f}% drop")
+                            
+                            # Execute swing rebuy using cash reserves
+                            if self._execute_swing_rebuy(market, swing_level.allocation, i, drop_pct):
+                                print(f"🛒 SWING REBUY: {market} Level {i} - {swing_level.allocation:.0%} at €{current_price}")
+                        
+        except Exception as e:
+            logger.error(f"Error checking swing trading opportunities for {market}: {e}")
+    
+    def _execute_swing_sell(self, market: str, position_allocation: Decimal, level: int, drop_pct: float) -> bool:
+        """Execute a swing trading sell order."""
+        try:
+            # Get current balance
+            current_balance = self._get_current_balance(market)
+            if current_balance <= 0:
+                logger.warning(f"No balance to swing sell for {market}")
+                return False
+            
+            # Calculate amount to sell
+            sell_amount = current_balance * position_allocation
+            
+            # Get current price for EUR calculation
+            current_price = self._get_current_price(market)
+            if current_price is None:
+                logger.error(f"Could not get current price for swing sell {market}")
+                return False
+            
+            # Place market sell order
+            body = {
+                'market': market,
+                'side': 'sell',
+                'orderType': 'market',
+                'amount': str(sell_amount),
+                'operatorId': self.trading_config.operator_id
+            }
+            
+            # Use trading circuit breaker for sell order execution
+            response = self.trading_circuit_breaker.call(
+                f"swing_sell_{market}_level_{level}",
+                self.api.send_request,
+                "POST",
+                "/order",
+                body
+            )
+            
+            if response:
+                amount_eur = sell_amount * current_price
+                
+                # Calculate cash to add to reserves (keep percentage for rebuying)
+                cash_reserve_amount = amount_eur * (self.config.swing_cash_reserve_pct / 100)
+                
+                # Add to swing cash reserves
+                self.state_manager.add_swing_cash_reserve(market, cash_reserve_amount)
+                
+                # Record the trade
+                self.state_manager.record_trade(
+                    market=market,
+                    trade_type="swing_sell",
+                    price=current_price,
+                    amount_eur=amount_eur,
+                    amount_crypto=sell_amount,
+                    reason=f"Swing sell level {level}: {drop_pct:.1f}% drop"
+                )
+                
+                # Mark level as completed
+                self.state_manager.mark_swing_level_completed(market, level, 'sell')
+                
+                # Update swing entry price for future calculations
+                self.state_manager.update_swing_entry_price(market, current_price)
+                
+                logger.info(f"Executed swing sell for {market}: {sell_amount:.8f} at €{current_price}, reserved €{cash_reserve_amount:.2f}")
+                return True
+            else:
+                logger.error(f"Swing sell order failed for {market} level {level}")
+                return False
+        
+        except CircuitBreakerError as e:
+            logger.warning(f"Trading circuit breaker blocked swing sell for {market}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Error executing swing sell for {market}: {e}")
+            return False
+    
+    def _execute_swing_rebuy(self, market: str, cash_allocation: Decimal, level: int, drop_pct: float) -> bool:
+        """Execute a swing trading rebuy order using cash reserves."""
+        try:
+            # Check available cash reserves
+            available_cash = self.state_manager.get_swing_cash_reserve(market)
+            if available_cash <= 0:
+                logger.debug(f"No swing cash reserves available for {market} rebuy")
+                return False
+            
+            # Calculate rebuy amount
+            rebuy_amount_eur = available_cash * cash_allocation
+            
+            # Get current price
+            current_price = self._get_current_price(market)
+            if current_price is None:
+                logger.error(f"Could not get current price for swing rebuy {market}")
+                return False
+            
+            # Use swing cash reserves
+            if not self.state_manager.use_swing_cash_reserve(market, rebuy_amount_eur):
+                logger.debug(f"Failed to reserve swing cash for {market} rebuy")
+                return False
+            
+            # Place market buy order
+            body = {
+                'market': market,
+                'side': 'buy',
+                'orderType': 'market',
+                'amountQuote': str(rebuy_amount_eur),
+                'operatorId': self.trading_config.operator_id
+            }
+            
+            try:
+                # Use trading circuit breaker for buy order execution
+                response = self.trading_circuit_breaker.call(
+                    f"swing_rebuy_{market}_level_{level}",
+                    self.api.send_request,
+                    "POST",
+                    "/order",
+                    body
+                )
+                
+                if response:
+                    # Calculate crypto amount received (approximate)
+                    crypto_amount = rebuy_amount_eur / current_price
+                    
+                    # Record the trade
+                    self.state_manager.record_trade(
+                        market=market,
+                        trade_type="swing_rebuy",
+                        price=current_price,
+                        amount_eur=rebuy_amount_eur,
+                        amount_crypto=crypto_amount,
+                        reason=f"Swing rebuy level {level}: {drop_pct:.1f}% drop"
+                    )
+                    
+                    # Mark level as completed
+                    self.state_manager.mark_swing_level_completed(market, level, 'rebuy')
+                    
+                    logger.info(f"Executed swing rebuy for {market}: €{rebuy_amount_eur} at €{current_price}")
+                    return True
+                else:
+                    logger.error(f"Swing rebuy order failed for {market} level {level}")
+                    # Return cash to reserves since order failed
+                    self.state_manager.add_swing_cash_reserve(market, rebuy_amount_eur)
+                    return False
+                    
+            except CircuitBreakerError as e:
+                logger.warning(f"Trading circuit breaker blocked swing rebuy for {market}: {e}")
+                # Return cash to reserves since order was blocked
+                self.state_manager.add_swing_cash_reserve(market, rebuy_amount_eur)
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error executing swing rebuy for {market}: {e}")
+            return False
     
     def _update_volatility_stops(self) -> None:
         """Update dynamic stop losses based on current volatility."""

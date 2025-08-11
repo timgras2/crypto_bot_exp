@@ -11,7 +11,7 @@ from decimal import Decimal, InvalidOperation
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Any, Optional, List
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TradeRecord:
     """Record of a completed protection trade."""
-    trade_type: str  # 'dca_buy', 'profit_sell', 'stop_loss', 'rebalance'
+    trade_type: str  # 'dca_buy', 'profit_sell', 'stop_loss', 'rebalance', 'swing_sell', 'swing_rebuy'
     price: Decimal
     amount_eur: Decimal
     amount_crypto: Decimal
@@ -47,6 +47,12 @@ class ProtectedAssetInfo:
     # DCA and profit taking state
     completed_dca_levels: List[int]
     completed_profit_levels: List[int]
+    
+    # Swing trading state
+    swing_cash_reserve_eur: Decimal = Decimal('0')     # Cash from swing sells available for rebuying
+    completed_swing_sell_levels: List[int] = field(default_factory=list)      # Completed swing sell levels
+    completed_swing_rebuy_levels: List[int] = field(default_factory=list)     # Completed swing rebuy levels
+    swing_entry_price: Optional[Decimal] = None        # Entry price for swing trading (updates on sells)
     
     # Portfolio rebalancing
     target_allocation_pct: Optional[Decimal] = None
@@ -414,6 +420,10 @@ class ProtectedAssetStateManager:
                         last_trade_date=datetime.fromisoformat(asset_data.get('last_trade_date', datetime.now().isoformat())).date(),
                         completed_dca_levels=asset_data.get('completed_dca_levels', []),
                         completed_profit_levels=asset_data.get('completed_profit_levels', []),
+                        swing_cash_reserve_eur=Decimal(asset_data.get('swing_cash_reserve_eur', '0')),
+                        completed_swing_sell_levels=asset_data.get('completed_swing_sell_levels', []),
+                        completed_swing_rebuy_levels=asset_data.get('completed_swing_rebuy_levels', []),
+                        swing_entry_price=Decimal(asset_data['swing_entry_price']) if asset_data.get('swing_entry_price') else None,
                         target_allocation_pct=Decimal(asset_data['target_allocation_pct']) if asset_data.get('target_allocation_pct') else None,
                         last_rebalance=datetime.fromisoformat(asset_data['last_rebalance']) if asset_data.get('last_rebalance') else None,
                         max_drawdown_pct=Decimal(asset_data.get('max_drawdown_pct', '0')),
@@ -481,6 +491,10 @@ class ProtectedAssetStateManager:
                     'last_trade_date': asset_info.last_trade_date.isoformat(),
                     'completed_dca_levels': asset_info.completed_dca_levels,
                     'completed_profit_levels': asset_info.completed_profit_levels,
+                    'swing_cash_reserve_eur': str(asset_info.swing_cash_reserve_eur),
+                    'completed_swing_sell_levels': asset_info.completed_swing_sell_levels,
+                    'completed_swing_rebuy_levels': asset_info.completed_swing_rebuy_levels,
+                    'swing_entry_price': str(asset_info.swing_entry_price) if asset_info.swing_entry_price else None,
                     'target_allocation_pct': str(asset_info.target_allocation_pct) if asset_info.target_allocation_pct else None,
                     'last_rebalance': asset_info.last_rebalance.isoformat() if asset_info.last_rebalance else None,
                     'max_drawdown_pct': str(asset_info.max_drawdown_pct),
@@ -512,3 +526,82 @@ class ProtectedAssetStateManager:
             temp_file = self.state_file.with_suffix('.tmp')
             if temp_file.exists():
                 temp_file.unlink()
+    
+    def add_swing_cash_reserve(self, market: str, amount_eur: Decimal) -> None:
+        """Add cash to swing trading reserves from a sell operation."""
+        with self._lock:
+            if market not in self._state:
+                logger.warning(f"Cannot add swing cash reserve: market {market} not found")
+                return
+            
+            self._state[market].swing_cash_reserve_eur += amount_eur
+            self._state[market].updated_at = datetime.now()
+            self._save_state()
+            
+            logger.debug(f"Added €{amount_eur} to swing cash reserve for {market}. "
+                        f"Total reserve: €{self._state[market].swing_cash_reserve_eur}")
+    
+    def use_swing_cash_reserve(self, market: str, amount_eur: Decimal) -> bool:
+        """Use cash from swing trading reserves for a rebuy operation."""
+        with self._lock:
+            if market not in self._state:
+                logger.warning(f"Cannot use swing cash reserve: market {market} not found")
+                return False
+            
+            asset_info = self._state[market]
+            if asset_info.swing_cash_reserve_eur < amount_eur:
+                logger.debug(f"Insufficient swing cash reserve for {market}: "
+                           f"need €{amount_eur}, have €{asset_info.swing_cash_reserve_eur}")
+                return False
+            
+            asset_info.swing_cash_reserve_eur -= amount_eur
+            asset_info.updated_at = datetime.now()
+            self._save_state()
+            
+            logger.debug(f"Used €{amount_eur} from swing cash reserve for {market}. "
+                        f"Remaining reserve: €{asset_info.swing_cash_reserve_eur}")
+            return True
+    
+    def mark_swing_level_completed(self, market: str, level_index: int, action: str) -> None:
+        """Mark a swing trading level as completed."""
+        with self._lock:
+            if market not in self._state:
+                logger.warning(f"Cannot mark swing level: market {market} not found")
+                return
+            
+            asset_info = self._state[market]
+            
+            if action == 'sell':
+                if level_index not in asset_info.completed_swing_sell_levels:
+                    asset_info.completed_swing_sell_levels.append(level_index)
+                    logger.debug(f"Marked swing sell level {level_index} as completed for {market}")
+            elif action == 'rebuy':
+                if level_index not in asset_info.completed_swing_rebuy_levels:
+                    asset_info.completed_swing_rebuy_levels.append(level_index)
+                    logger.debug(f"Marked swing rebuy level {level_index} as completed for {market}")
+            else:
+                logger.warning(f"Invalid swing action: {action}")
+                return
+            
+            asset_info.updated_at = datetime.now()
+            self._save_state()
+    
+    def update_swing_entry_price(self, market: str, price: Decimal) -> None:
+        """Update the swing trading entry price (after sells)."""
+        with self._lock:
+            if market not in self._state:
+                logger.warning(f"Cannot update swing entry price: market {market} not found")
+                return
+            
+            self._state[market].swing_entry_price = price
+            self._state[market].updated_at = datetime.now()
+            self._save_state()
+            
+            logger.debug(f"Updated swing entry price for {market} to €{price}")
+    
+    def get_swing_cash_reserve(self, market: str) -> Decimal:
+        """Get available swing trading cash reserves."""
+        with self._lock:
+            if market not in self._state:
+                return Decimal('0')
+            return self._state[market].swing_cash_reserve_eur

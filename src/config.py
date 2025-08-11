@@ -65,11 +65,31 @@ class ProfitLevel:
 
 
 @dataclass
+class SwingLevel:
+    """Configuration for a swing trading level."""
+    threshold_pct: Decimal      # Percentage drop to trigger action (e.g., 5%)
+    action: str                 # 'sell' or 'rebuy'
+    allocation: Decimal         # Portion to sell/rebuy (e.g., 0.25 = 25%)
+
+
+@dataclass
+class TrendDetectionConfig:
+    """Configuration for trend detection and market regime filtering."""
+    enabled: bool = True                     # Enable trend-based adjustments
+    lookback_hours: int = 168               # Hours to look back for trend (7 days)
+    bear_trend_threshold: Decimal = Decimal('-10.0')  # % decline to trigger bear mode
+    bull_trend_threshold: Decimal = Decimal('10.0')   # % gain to trigger bull mode
+    volatility_threshold: Decimal = Decimal('50.0')   # Daily volatility % for volatile mode
+
+@dataclass
 class AssetProtectionConfig:
     """Configuration for asset protection strategy."""
     enabled: bool = False                    # Master feature toggle
     protected_assets: List[str] = field(default_factory=list)  # Assets to protect (e.g., ['BTC-EUR', 'ETH-EUR'])
     max_protection_budget: Decimal = Decimal('100.0')  # Maximum EUR for protection operations
+    
+    # Trend detection and market regime adaptation
+    trend_detection: TrendDetectionConfig = field(default_factory=TrendDetectionConfig)
     
     # Volatility-based stop loss
     base_stop_loss_pct: Decimal = Decimal('15.0')      # Base stop loss percentage
@@ -100,6 +120,40 @@ class AssetProtectionConfig:
     max_daily_trades: int = 10              # Maximum trades per day per asset
     emergency_stop_loss_pct: Decimal = Decimal('25.0')  # Emergency stop if loss exceeds this
     position_size_limit_pct: Decimal = Decimal('50.0')  # Max percentage of budget per asset
+    
+    # Swing trading protection (sell on drops, rebuy at lows)
+    swing_trading_enabled: bool = False     # Enable swing trading mode
+    
+    # Standard swing levels (used in normal/bull markets)
+    swing_levels: List[SwingLevel] = field(default_factory=lambda: [
+        SwingLevel(threshold_pct=Decimal('5'), action='sell', allocation=Decimal('0.25')),
+        SwingLevel(threshold_pct=Decimal('10'), action='sell', allocation=Decimal('0.25')),
+        SwingLevel(threshold_pct=Decimal('20'), action='rebuy', allocation=Decimal('0.5')),
+        SwingLevel(threshold_pct=Decimal('30'), action='rebuy', allocation=Decimal('0.5'))
+    ])
+    
+    # Bear market swing levels (more aggressive selling, deeper rebuy levels)
+    bear_market_swing_levels: List[SwingLevel] = field(default_factory=lambda: [
+        SwingLevel(threshold_pct=Decimal('3'), action='sell', allocation=Decimal('0.30')),   # Sell earlier
+        SwingLevel(threshold_pct=Decimal('7'), action='sell', allocation=Decimal('0.30')),   # Sell more
+        SwingLevel(threshold_pct=Decimal('12'), action='sell', allocation=Decimal('0.25')),  # Keep selling
+        SwingLevel(threshold_pct=Decimal('40'), action='rebuy', allocation=Decimal('0.4')),  # Wait deeper
+        SwingLevel(threshold_pct=Decimal('60'), action='rebuy', allocation=Decimal('0.6'))   # Major rebuy at bottom
+    ])
+    
+    # Bull market swing levels (less selling, quicker rebuys)
+    bull_market_swing_levels: List[SwingLevel] = field(default_factory=lambda: [
+        SwingLevel(threshold_pct=Decimal('8'), action='sell', allocation=Decimal('0.15')),   # Sell less
+        SwingLevel(threshold_pct=Decimal('15'), action='rebuy', allocation=Decimal('0.5')),  # Rebuy sooner
+        SwingLevel(threshold_pct=Decimal('25'), action='rebuy', allocation=Decimal('0.5'))   # Quick recovery
+    ])
+    
+    swing_cash_reserve_pct: Decimal = Decimal('75.0')   # Keep 75% of sale proceeds for rebuying
+    swing_trailing_stop_enabled: bool = True            # Trail stops upward on recovery
+    
+    # Progressive stop loss (sell everything if decline exceeds threshold)
+    progressive_stop_loss_enabled: bool = True
+    progressive_stop_loss_threshold: Decimal = Decimal('25.0')  # Sell all if down >25% in bear market
 
 
 def _validate_decimal_range(value: str, name: str, min_val: float, max_val: float) -> Decimal:
@@ -318,6 +372,65 @@ def _parse_target_allocations(allocations_str: str) -> Dict[str, Decimal]:
     return allocations
 
 
+def _parse_swing_levels(levels_str: str) -> List[SwingLevel]:
+    """Parse swing trading levels from environment variable string.
+    
+    Format: "5:sell:0.25,10:sell:0.25,20:rebuy:0.5" (threshold_pct:action:allocation,...)
+    """
+    if not levels_str.strip():
+        # Return default levels if empty
+        return [
+            SwingLevel(threshold_pct=Decimal('5'), action='sell', allocation=Decimal('0.25')),
+            SwingLevel(threshold_pct=Decimal('10'), action='sell', allocation=Decimal('0.25')),
+            SwingLevel(threshold_pct=Decimal('20'), action='rebuy', allocation=Decimal('0.5')),
+            SwingLevel(threshold_pct=Decimal('30'), action='rebuy', allocation=Decimal('0.5'))
+        ]
+    
+    levels = []
+    
+    for level_spec in levels_str.split(','):
+        level_spec = level_spec.strip()
+        parts = level_spec.split(':')
+        
+        if len(parts) != 3:
+            raise ValueError(f"Invalid swing level format: '{level_spec}'. Expected 'threshold:action:allocation'")
+        
+        threshold_str, action_str, allocation_str = parts
+        
+        try:
+            threshold = _validate_decimal_range(threshold_str.strip(), "swing threshold", 1.0, 90.0)
+            action = action_str.strip().lower()
+            allocation = _validate_decimal_range(allocation_str.strip(), "swing allocation", 0.01, 1.0)
+            
+            # Validate action
+            if action not in ['sell', 'rebuy']:
+                raise ValueError(f"Invalid action '{action}'. Must be 'sell' or 'rebuy'")
+            
+            levels.append(SwingLevel(
+                threshold_pct=threshold,
+                action=action,
+                allocation=allocation
+            ))
+        except ValueError as e:
+            raise ValueError(f"Invalid swing level '{level_spec}': {e}")
+    
+    # Sort by threshold ascending (smallest drops first)
+    levels.sort(key=lambda x: x.threshold_pct)
+    
+    # Validate that sell levels come before rebuy levels
+    sell_thresholds = [l.threshold_pct for l in levels if l.action == 'sell']
+    rebuy_thresholds = [l.threshold_pct for l in levels if l.action == 'rebuy']
+    
+    if sell_thresholds and rebuy_thresholds:
+        max_sell = max(sell_thresholds)
+        min_rebuy = min(rebuy_thresholds)
+        if max_sell >= min_rebuy:
+            logger.warning(f"Sell levels should be smaller than rebuy levels. "
+                          f"Max sell: {max_sell}%, Min rebuy: {min_rebuy}%")
+    
+    return levels
+
+
 def _load_dip_config() -> DipBuyConfig:
     """Load dip buying configuration from environment variables."""
     enabled = os.getenv("DIP_BUY_ENABLED", "false").lower() in ('true', '1', 'yes', 'on')
@@ -384,7 +497,14 @@ def _load_asset_protection_config() -> AssetProtectionConfig:
         ),
         position_size_limit_pct=_validate_decimal_range(
             os.getenv("POSITION_SIZE_LIMIT_PCT", "50.0"), "POSITION_SIZE_LIMIT_PCT", 5.0, 100.0
-        )
+        ),
+        # Swing trading configuration
+        swing_trading_enabled=os.getenv("SWING_TRADING_ENABLED", "false").lower() in ('true', '1', 'yes', 'on'),
+        swing_levels=_parse_swing_levels(os.getenv("SWING_LEVELS", "")),
+        swing_cash_reserve_pct=_validate_decimal_range(
+            os.getenv("SWING_CASH_RESERVE_PCT", "75.0"), "SWING_CASH_RESERVE_PCT", 10.0, 100.0
+        ),
+        swing_trailing_stop_enabled=os.getenv("SWING_TRAILING_STOP_ENABLED", "true").lower() in ('true', '1', 'yes', 'on')
     )
 
 
