@@ -30,7 +30,7 @@ from typing import List, Dict, Any, Tuple
 from dataclasses import dataclass
 
 # Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from config import AssetProtectionConfig, SwingLevel, TrendDetectionConfig, load_config
 
