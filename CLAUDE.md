@@ -320,3 +320,32 @@ The `future_work/` directory contains:
 - **Market analysis tools** for strategy optimization
 
 All future work follows the same quality standards with comprehensive error handling, input validation, and thread safety.
+
+## Claude Code Development Guidelines
+
+### Unicode/Emoji Handling 
+**CRITICAL**: When writing Python scripts that include emojis or Unicode characters on Windows, ALWAYS use the standard Unicode template from this project (see Unicode section above). Do NOT assume Unicode errors are terminal failures - they are easily fixable encoding issues.
+
+**The Issue**: Modern Windows terminals support Unicode perfectly, but Python defaults to CP1252 encoding instead of UTF-8, causing `UnicodeEncodeError: 'charmap' codec can't encode character` errors.
+
+**The Solution**: ALWAYS include this at the top of Python files with Unicode:
+```python
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+import sys
+
+# Fix Unicode encoding on Windows  
+if sys.platform.startswith('win'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except (AttributeError, OSError):
+        pass
+```
+
+**Development Pattern**: 
+1. When you encounter Unicode errors, apply the fix above rather than removing emojis
+2. Most files in this project already use this pattern - follow their example
+3. Look at `review_trades.py`, `run_simulation.py`, `test_simulator.py` as templates
+4. The user prefers Unicode characters and emojis in output when appropriate
+
+This prevents the repeated pattern of encountering Unicode issues during testing and development.

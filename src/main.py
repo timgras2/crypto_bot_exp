@@ -134,8 +134,16 @@ class TradingBot:
                 # Show periodic status
                 if scan_count % 6 == 1:  # Every minute (6 scans at 10sec intervals)
                     active_trades = len(self.trade_manager.active_trades)
-                    if active_trades > 0:
-                        print(f"🕐 {current_time} | ✅ Bot running | 📊 {active_trades} active trades | Scan #{scan_count}")
+                    dip_monitored = 0
+                    if self.dip_manager:
+                        try:
+                            dip_status = self.dip_manager.state_manager.get_active_tracking()
+                            dip_monitored = len(dip_status)
+                        except:
+                            dip_monitored = 0
+                    
+                    if active_trades > 0 or dip_monitored > 0:
+                        print(f"🕐 {current_time} | ✅ Bot running | 📊 {active_trades} active trades | 🎯 {dip_monitored} dip monitored | Scan #{scan_count}")
                     else:
                         print(f"🕐 {current_time} | ✅ Bot running | 👀 Scanning for new listings... | Scan #{scan_count}")
                 

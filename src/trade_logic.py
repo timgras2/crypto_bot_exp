@@ -60,7 +60,7 @@ class TradeManager:
             
             # Calculate profit/loss
             profit_pct = ((sell_price - trade.buy_price) / trade.buy_price) * 100
-            profit_eur = profit_pct / 100 * 10.0  # Approximate EUR profit based on typical €10 trade
+            profit_eur = profit_pct / Decimal('100') * Decimal('10.0')  # Approximate EUR profit based on typical €10 trade
             
             # Create completed trade record (same format as active trades + completion info)
             completed_trade = {
@@ -114,8 +114,8 @@ class TradeManager:
     def save_active_trades(self) -> None:
         """Save active trades to disk for recovery after restart."""
         try:
-            logging.info(f"save_active_trades called with {len(self.active_trades)} active trades")
-            logging.info(f"Current active trades: {list(self.active_trades.keys())}")
+            logging.debug(f"save_active_trades called with {len(self.active_trades)} active trades")
+            logging.debug(f"Current active trades: {list(self.active_trades.keys())}")
             
             # Use timeout to prevent deadlock during shutdown
             lock_acquired = self._lock.acquire(timeout=5.0)
@@ -156,8 +156,11 @@ class TradeManager:
                 
                 # Save to file
                 self.persistence_file.write_text(json.dumps(serializable_trades, indent=2))
-                logging.info(f"Saved {len(serializable_trades)} active trades to {self.persistence_file}")
-                print(f"💾 Saved {len(serializable_trades)} active trades for recovery")
+                logging.debug(f"Saved {len(serializable_trades)} active trades to {self.persistence_file}")
+                # Only print save message during shutdown or first save of the session
+                if len(serializable_trades) > 0 and not hasattr(self, '_save_printed'):
+                    print(f"💾 Trades auto-saved for recovery")
+                    self._save_printed = True
                 
             finally:
                 # Always release the lock
@@ -555,6 +558,8 @@ class TradeManager:
                             profit_pct = ((current_price - trade.buy_price) / trade.buy_price) * 100
                             print(f"📈 {market} NEW HIGH: €{current_price} (+{profit_pct:.1f}%) | Stop: €{trade.trailing_stop_price}")
                             logging.info(f"Updated {market} - Highest: {trade.highest_price}, Trailing Stop: {trade.trailing_stop_price}")
+                            # Save updated highest price to persistence
+                            threading.Thread(target=self.save_active_trades, daemon=True).start()
 
                         # Check stop loss
                         if current_price <= trade.stop_loss_price:
@@ -569,6 +574,8 @@ class TradeManager:
                                 logging.info(f"Exiting thread after stop loss for {market}")
                                 # Clean up immediately when triggered
                                 self.active_trades.pop(market, None)
+                                # Save in background thread to prevent blocking
+                                threading.Thread(target=self.save_active_trades, daemon=True).start()
                                 stop_event.set()
                                 break
 
@@ -585,6 +592,8 @@ class TradeManager:
                                 logging.info(f"Exiting thread after trailing stop for {market}")
                                 # Clean up immediately when triggered
                                 self.active_trades.pop(market, None)
+                                # Save in background thread to prevent blocking
+                                threading.Thread(target=self.save_active_trades, daemon=True).start()
                                 stop_event.set()
                                 break
 
@@ -595,5 +604,5 @@ class TradeManager:
         finally:
             # Ensure cleanup happens only once when thread exits naturally
             logging.info(f"Monitoring thread for {market} exiting naturally")
-            # Update persistence file to reflect any trade closures
-            self.save_active_trades()
+            # Note: Do not call save_active_trades() here as it can cause premature
+            # deletion of persistence file when active_trades becomes empty

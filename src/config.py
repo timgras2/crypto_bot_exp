@@ -46,6 +46,10 @@ class DipBuyConfig:
     max_rebuys_per_asset: int = 3           # Maximum rebuy attempts per asset
     use_market_filter: bool = False         # Enable BTC trend filtering
     
+    # Safety filters for slippage and liquidity protection
+    max_slippage_pct: Decimal = Decimal('0.5')      # Max allowed slippage percentage
+    min_24h_volume_usd: Decimal = Decimal('500000') # Min $500K daily volume required
+    
     # Default dip levels: 40% at -10%, 35% at -20%, 25% at -35%
     dip_levels: List[DipLevel] = field(default_factory=lambda: [
         DipLevel(threshold_pct=Decimal('10'), capital_allocation=Decimal('0.4')),
@@ -155,6 +159,12 @@ def _load_dip_config() -> DipBuyConfig:
             os.getenv("DIP_MAX_REBUYS_PER_ASSET", "3"), "DIP_MAX_REBUYS_PER_ASSET", 1, 10
         ),
         use_market_filter=os.getenv("DIP_USE_MARKET_FILTER", "false").lower() in ('true', '1', 'yes', 'on'),
+        max_slippage_pct=_validate_decimal_range(
+            os.getenv("DIP_MAX_SLIPPAGE_PCT", "0.5"), "DIP_MAX_SLIPPAGE_PCT", 0.1, 5.0
+        ),
+        min_24h_volume_usd=_validate_decimal_range(
+            os.getenv("DIP_MIN_24H_VOLUME_USD", "500000"), "DIP_MIN_24H_VOLUME_USD", 10000.0, 100000000.0
+        ),
         dip_levels=_parse_dip_levels(os.getenv("DIP_LEVELS", ""))
     )
 

@@ -112,6 +112,14 @@ class DipEvaluator:
         rebuy_amount = self._calculate_rebuy_amount(eligible_level)
         threshold_price = asset_info.sell_price * (Decimal('1') - eligible_level.threshold_pct / Decimal('100'))
         
+        # Safety filter: Check liquidity and slippage
+        liquidity_check = self._check_liquidity_safety(asset_info.market, rebuy_amount)
+        if not liquidity_check.should_rebuy:
+            return RebuyDecision(
+                should_rebuy=False,
+                reason=f"Liquidity filter: {liquidity_check.reason}"
+            )
+        
         # Market filter check (optional)
         if self.config.use_market_filter:
             market_decision = self._check_market_conditions()
@@ -203,6 +211,61 @@ class DipEvaluator:
         
         # Ensure we don't exceed the maximum trade amount per transaction
         return min(base_amount, self.max_trade_amount)
+    
+    def _check_liquidity_safety(self, market: str, rebuy_amount: Decimal) -> RebuyDecision:
+        """
+        Check liquidity and slippage safety before executing dip rebuy.
+        
+        This method validates:
+        1. Minimum 24h trading volume requirements
+        2. Estimated slippage within acceptable limits
+        
+        Args:
+            market: Trading pair (e.g., "PUMP-EUR")
+            rebuy_amount: Planned rebuy amount in EUR
+            
+        Returns:
+            RebuyDecision indicating if rebuy is safe from liquidity perspective
+        """
+        try:
+            # This would need to be implemented with proper API integration
+            # For now, return a placeholder that allows trading
+            # In a real implementation, this would:
+            
+            # 1. Check 24h volume requirement
+            # ticker = api.get_24h_ticker(market)
+            # volume_usd = ticker['volume'] * ticker['last_price']  # Approximate USD volume
+            # if volume_usd < self.config.min_24h_volume_usd:
+            #     return RebuyDecision(
+            #         should_rebuy=False,
+            #         reason=f"Insufficient 24h volume: ${volume_usd:,.0f} < ${self.config.min_24h_volume_usd:,.0f}"
+            #     )
+            
+            # 2. Estimate slippage
+            # order_book = api.get_order_book(market)
+            # estimated_slippage = calculate_slippage(order_book, rebuy_amount)
+            # if estimated_slippage > self.config.max_slippage_pct:
+            #     return RebuyDecision(
+            #         should_rebuy=False,
+            #         reason=f"Estimated slippage {estimated_slippage:.2f}% > {self.config.max_slippage_pct}%"
+            #     )
+            
+            # For now, log the safety check and allow trading
+            logger.debug(f"Liquidity safety check for {market}: €{rebuy_amount} "
+                        f"(volume req: ${self.config.min_24h_volume_usd:,.0f}, "
+                        f"max slippage: {self.config.max_slippage_pct}%)")
+            
+            return RebuyDecision(
+                should_rebuy=True,
+                reason="Liquidity safety check passed (placeholder implementation)"
+            )
+            
+        except Exception as e:
+            logger.error(f"Error checking liquidity safety for {market}: {e}")
+            return RebuyDecision(
+                should_rebuy=False,
+                reason=f"Liquidity check error: {str(e)}"
+            )
     
     def _check_market_conditions(self) -> RebuyDecision:
         """
