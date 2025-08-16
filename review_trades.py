@@ -164,6 +164,10 @@ def display_completed_trades(days: int = None):
             duration_str = trade.get('duration_hours', 'Unknown')
             trigger_reason = trade.get('trigger_reason', 'unknown')
             
+            # Enhanced analytics
+            partial_profit_taken = trade.get('partial_profit_taken', False)
+            peak_to_sell_gap = trade.get('peak_to_sell_gap_pct', '0.00')
+            
             # Format sell time
             try:
                 if sell_time_str:
@@ -182,21 +186,37 @@ def display_completed_trades(days: int = None):
                 status = "LOSS"
                 reason_indicator = "STOP"
             
-            print(f"{status} {market} | {sell_time_formatted}")
+            # Add partial profit indicator
+            partial_indicator = " 💎" if partial_profit_taken else ""
+            
+            print(f"{status} {market}{partial_indicator} | {sell_time_formatted}")
             print(f"   Buy: €{buy_price:.6f} | Sell: €{sell_price:.6f} | High: €{highest_price:.6f}")
             print(f"   P&L: €{pnl_eur:+.4f} ({pnl_pct:+.2f}%) | Duration: {duration_str}h")
-            print(f"   Trigger: {trigger_reason.replace('_', ' ').title()} ({reason_indicator})")
+            print(f"   Trigger: {trigger_reason.replace('_', ' ').title()} ({reason_indicator}) | Peak Gap: {peak_to_sell_gap}%")
+            if partial_profit_taken:
+                print(f"   🎯 Partial profit secured at peak before final sale")
             print()
             
         except Exception as e:
             print(f"ERROR processing completed trade {trade.get('market', 'Unknown')}: {e}")
     
-    # Summary statistics
+    # Enhanced summary statistics
     total_trades = winning_trades + losing_trades
     win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
     
+    # Calculate optimization metrics
+    partial_profit_trades = sum(1 for trade in completed_trades if trade.get('partial_profit_taken', False))
+    total_peak_gap = sum(float(trade.get('peak_to_sell_gap_pct', '0')) for trade in completed_trades)
+    avg_peak_gap = total_peak_gap / total_trades if total_trades > 0 else 0
+    
     print(f"SUMMARY: {total_trades} trades | {winning_trades} wins, {losing_trades} losses")
     print(f"Win Rate: {win_rate:.1f}% | Total Realized P&L: €{total_realized:+.4f}")
+    print(f"Partial Profits: {partial_profit_trades}/{total_trades} trades | Avg Peak Gap: {avg_peak_gap:.1f}%")
+    if avg_peak_gap > 5:
+        try:
+            print(f"⚠️  High peak gap suggests tighter trailing stops could improve profits")
+        except UnicodeEncodeError:
+            print(f"WARNING: High peak gap suggests tighter trailing stops could improve profits")
     print()
 
 def display_summary():

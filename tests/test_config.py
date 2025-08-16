@@ -30,7 +30,7 @@ class TestConfig(unittest.TestCase):
             os.environ.pop(key, None)
 
     def test_load_config(self):
-        trading_config, api_config = load_config()
+        trading_config, api_config, dip_config = load_config()
 
         # Check TradingConfig values
         self.assertEqual(trading_config.min_profit_pct, Decimal("4.5"))
