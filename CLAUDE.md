@@ -323,6 +323,15 @@ All future work follows the same quality standards with comprehensive error hand
 
 ## Claude Code Development Guidelines
 
+### Git Workflow Requirements
+**CRITICAL**: When committing changes, ALWAYS follow the complete workflow from `GIT_WORKFLOW.md`:
+
+1. **Stage changes**: `git add .`
+2. **Commit with proper format**: `git commit -m "type(scope): description"`  
+3. **ALWAYS PUSH TO REMOTE**: `git push` - **NEVER skip this step!**
+
+The system reminder mentions "git workflow md" - this refers to `GIT_WORKFLOW.md`. **Every commit must be pushed to the remote repository** to ensure proper backup and multi-computer workflow.
+
 ### Unicode/Emoji Handling 
 **CRITICAL**: When writing Python scripts that include emojis or Unicode characters on Windows, ALWAYS use the standard Unicode template from this project (see Unicode section above). Do NOT assume Unicode errors are terminal failures - they are easily fixable encoding issues.
 
