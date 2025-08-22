@@ -1099,7 +1099,13 @@ def run_comprehensive_analysis():
     # Scenario analysis
     print("\n\nPERFORMANCE BY MARKET SCENARIO:")
     print("-" * 80)
-    print(f"{'Scenario':<16} {'Conservative':<14} {'Balanced':<12} {'Aggressive':<12} {'Best Strategy'}")
+    # Get the actual config names dynamically
+    config_names = list(configs.keys())
+    header = f"{'Scenario':<16} "
+    for name in config_names:
+        header += f"{name:<14} "
+    header += "Best Strategy"
+    print(header)
     print("-" * 80)
     
     for scenario in all_scenarios:
@@ -1108,11 +1114,11 @@ def run_comprehensive_analysis():
         
         best_strategy = max(scenario_results.keys(), key=lambda x: scenario_results[x])
         
-        print(f"{scenario.replace('_', ' ').title():<16} "
-              f"{scenario_results['Conservative']:+6.1f}% "
-              f"     {scenario_results['Balanced']:+6.1f}% "
-              f"    {scenario_results['Aggressive']:+6.1f}% "
-              f"    {best_strategy}")
+        row = f"{scenario.replace('_', ' ').title():<16} "
+        for config_name in config_names:
+            row += f"{scenario_results[config_name]:+6.1f}%       "
+        row += f"{best_strategy}"
+        print(row)
     
     # Risk analysis
     print("\n\nRISK ANALYSIS:")
