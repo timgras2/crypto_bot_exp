@@ -200,7 +200,7 @@ def main():
         print("3. Parameter testing (different dip configurations)")
         print("4. All of the above")
         
-        choice = input("\nEnter choice (1-4): ").strip()
+        choice = "1"  # Default to basic simulation for automated run
         
         if choice == "1" or choice == "4":
             print("\n" + "="*50)

@@ -15,6 +15,7 @@ from config import AssetProtectionConfig, TradingConfig, DipLevel, ProfitLevel
 from requests_handler import BitvavoAPI
 from volatility_calculator import VolatilityCalculator
 from protected_asset_state import ProtectedAssetStateManager, ProtectedAssetInfo
+from enhanced_asset_protection import EnhancedAssetProtectionManager
 from circuit_breaker import (
     CircuitBreaker, CircuitBreakerError, 
     create_api_circuit_breaker, create_trading_circuit_breaker, create_balance_circuit_breaker
@@ -47,6 +48,7 @@ class AssetProtectionManager:
         # Initialize components
         self.volatility_calc = VolatilityCalculator(api)
         self.state_manager = ProtectedAssetStateManager(data_dir)
+        self.enhanced_protection = EnhancedAssetProtectionManager(self)
         
         # Initialize circuit breakers for system stability
         self.api_circuit_breaker = create_api_circuit_breaker()
@@ -225,6 +227,9 @@ class AssetProtectionManager:
             # Check swing trading opportunities
             if self.config.swing_trading_enabled:
                 self._check_swing_trading_opportunities(market, asset_info, current_price)
+            
+            # Check enhanced protection opportunities (trailing profit + dynamic buybacks)
+            self.enhanced_protection.check_enhanced_opportunities(market, current_price, asset_info)
                 
         except Exception as e:
             logger.error(f"Error checking opportunities for {market}: {e}")

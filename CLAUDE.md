@@ -18,6 +18,7 @@ crypto_bot_main/
 │   ├── market_utils.py       # MarketTracker for new listings detection
 │   ├── trade_logic.py        # TradeManager for execution and monitoring
 │   ├── asset_protection_manager.py # Asset protection orchestration
+│   ├── enhanced_asset_protection.py # Enhanced trailing profit and dynamic buybacks
 │   ├── volatility_calculator.py    # Dynamic volatility-based risk management
 │   ├── protected_asset_state.py    # Thread-safe asset protection state
 │   ├── circuit_breaker.py          # System stability protection
@@ -110,19 +111,27 @@ BITVAVO_BASE_URL=https://api.bitvavo.com/v2  # API base URL
 
 Asset protection parameters (optional):
 ```
-# Asset Protection Strategy
+# Asset Protection Strategy (Manages 100% of designated asset holdings)
 ASSET_PROTECTION_ENABLED=false           # Enable/disable asset protection
 PROTECTED_ASSETS=BTC-EUR,ETH-EUR         # Assets to protect (comma-separated)
-MAX_PROTECTION_BUDGET=100.0              # Maximum EUR for protection operations
+MAX_PROTECTION_BUDGET=100.0              # Maximum EUR for DCA operations only
 BASE_STOP_LOSS_PCT=15.0                  # Base stop loss percentage
 VOLATILITY_MULTIPLIER=1.5                # Volatility adjustment multiplier
 
-# DCA (Dollar Cost Averaging) Configuration
+# Enhanced Trailing Profit System (Self-funding via profit sales)
+ENHANCED_PROTECTION_ENABLED=true         # Enable trailing profits and dynamic buybacks
+TRAILING_START_GAIN_PCT=8.0              # Start trailing after +8% gains
+TRAILING_DISTANCE_PCT=5.0                # Trail 5% below highest price
+TRAILING_INCREMENT_PCT=2.0               # Sell 2% of position per trigger
+BUYBACK_TOLERANCE_PCT=3.0                # Buy within 3% of sell price
+MIN_TRADE_VALUE_EUR=20.0                 # Minimum EUR value per trade
+
+# DCA (Dollar Cost Averaging) Configuration (Uses protection budget)
 DCA_ENABLED=true                         # Enable DCA buying on dips
 DCA_LEVELS=10:0.3,20:0.4,30:0.3         # Dip levels (threshold_pct:allocation)
 
-# Profit Taking Configuration
-PROFIT_TAKING_ENABLED=true               # Enable profit taking on pumps
+# Traditional Profit Taking Configuration (Rigid levels)
+PROFIT_TAKING_ENABLED=false              # Enable profit taking on pumps (disable if using enhanced)
 PROFIT_TAKING_LEVELS=20:0.25,40:0.5     # Profit levels (threshold_pct:allocation)
 
 # Portfolio Management
@@ -237,10 +246,15 @@ The bot uses threading for concurrent operations:
 
 ### Advanced Features (Optional)
 
-#### Asset Protection Strategy
+#### Enhanced Asset Protection Strategy (NEW)
+- **Enhanced Trailing Profit Taking**: Gradual profit capture as prices rise (starts at +8%, sells 2% per 5% trailing)
+- **Dynamic Buyback System**: Automatically buys back near recent sell levels to maintain position exposure
+- **Trade Cost Optimization**: Minimum trade thresholds to avoid unnecessary fees (€20 minimum, 2% move threshold)
+- **Complete Asset Management**: Manages 100% of designated asset holdings (specified in PROTECTED_ASSETS)
+- **Self-Funding Operations**: Profit sales fund buybacks, separate DCA budget for major dips
+- **Smart Position Maintenance**: Preserves exposure while capturing gains (solves "rigid level" problem)
 - **Dynamic Volatility-Based Stop Losses**: Risk-adjusted stop losses based on market volatility
-- **Multi-Level DCA Buying**: Automatically buy dips at configurable price thresholds
-- **Profit Taking on Pumps**: Sell portions of positions at profit targets
+- **Multi-Level DCA Buying**: Automatically buy dips at configurable price thresholds using protection budget
 - **Portfolio Rebalancing**: Maintain target asset allocations automatically
 - **Emergency Stop Loss**: Hard limit protection against severe losses
 - **Daily Budget Management**: Prevent excessive trading with daily limits
