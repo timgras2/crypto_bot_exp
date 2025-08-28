@@ -15,8 +15,15 @@
       "Bash(find:*)",
       "Bash(python test:*)",
       "Bash(python:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(for:*)",
+      "Bash(do echo \"Copying $file...\")",
+      "Bash(done)",
+      "Bash(copy:*)"
     ],
-    "deny": []
+    "deny": [],
+    "additionalDirectories": [
+      "C:\\Users\\tgra\\OneDrive - Superp Technology Consultants B.V\\Prive\\AI\\Claude Code\\DeGiro_Swing_Trading\\src"
+    ]
   }
 }

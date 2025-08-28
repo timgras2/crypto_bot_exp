@@ -115,30 +115,50 @@ Asset protection parameters (optional):
 ASSET_PROTECTION_ENABLED=false           # Enable/disable asset protection
 PROTECTED_ASSETS=BTC-EUR,ETH-EUR         # Assets to protect (comma-separated)
 MAX_PROTECTION_BUDGET=100.0              # Maximum EUR for DCA operations only
-BASE_STOP_LOSS_PCT=15.0                  # Base stop loss percentage
-VOLATILITY_MULTIPLIER=1.5                # Volatility adjustment multiplier
+
+# CRYPTO-OPTIMIZED LEVELS (v3.0 Upgrade Guide Implementation)
+# Conservative settings for BTC/ETH - designed for crypto volatility
+DCA_ENABLED=true                         # Enable DCA buying on dips
+DCA_LEVELS=15:0.3,25:0.4,40:0.3         # Crypto-appropriate DCA levels
+SWING_TRADING_ENABLED=false              # Coordinated swing levels (advanced users)
+SWING_LEVELS=12:sell:0.15,18:sell:0.20,35:rebuy:0.40,50:rebuy:0.60
+
+# UPGRADE GUIDE SAFETY FEATURES
+# Position Size Controls (prevents over-exposure)
+MAX_POSITION_MULTIPLIER=2.0              # Maximum 2x original position size
+POSITION_SIZE_CHECK_ENABLED=true         # Enable position monitoring
+# Loss Circuit Breaker (stops buying during crashes)
+LOSS_CIRCUIT_BREAKER_PCT=25.0            # Stop buying at -25% loss (crypto-appropriate)
+CIRCUIT_BREAKER_ENABLED=true             # Enable circuit breaker
+# Smart DCA Timing (prevents "falling knife" purchases)
+DIRECTIONAL_DCA_ENABLED=true             # Enable momentum-based DCA timing
+DCA_MOMENTUM_HOURS=1                     # Hours to analyze momentum
+DCA_FALLING_MULTIPLIER=0.5               # Reduce DCA when falling through level
+DCA_BOUNCING_MULTIPLIER=1.5              # Increase DCA when bouncing off level
+DCA_MOMENTUM_THRESHOLD=0.5               # Minimum momentum to trigger logic
+# Recovery Rebuy System (solves "missed opportunity" problem)
+RECOVERY_REBUY_ENABLED=true              # Enable recovery rebuys on bounces
+MIN_RECOVERY_THRESHOLD_PCT=15.0          # Minimum drop to track for recovery
+RECOVERY_BOUNCE_PCT=8.0                  # Bounce % to trigger rebuy
+RECOVERY_REBUY_ALLOCATION=0.3            # Use 30% of available cash reserves
 
 # Enhanced Trailing Profit System (Self-funding via profit sales)
 ENHANCED_PROTECTION_ENABLED=true         # Enable trailing profits and dynamic buybacks
-TRAILING_START_GAIN_PCT=8.0              # Start trailing after +8% gains
-TRAILING_DISTANCE_PCT=5.0                # Trail 5% below highest price
-TRAILING_INCREMENT_PCT=2.0               # Sell 2% of position per trigger
-BUYBACK_TOLERANCE_PCT=3.0                # Buy within 3% of sell price
+TRAILING_START_GAIN_PCT=12.0             # Start trailing after +12% gains (crypto-adjusted)
+TRAILING_DISTANCE_PCT=8.0                # Trail 8% below highest price (crypto-adjusted)
+TRAILING_INCREMENT_PCT=3.0               # Sell 3% of position per trigger (crypto-adjusted)
+BUYBACK_TOLERANCE_PCT=5.0                # Buy within 5% of sell price (crypto-adjusted)
 MIN_TRADE_VALUE_EUR=20.0                 # Minimum EUR value per trade
 
-# DCA (Dollar Cost Averaging) Configuration (Uses protection budget)
-DCA_ENABLED=true                         # Enable DCA buying on dips
-DCA_LEVELS=10:0.3,20:0.4,30:0.3         # Dip levels (threshold_pct:allocation)
-
-# Traditional Profit Taking Configuration (Rigid levels)
-PROFIT_TAKING_ENABLED=false              # Enable profit taking on pumps (disable if using enhanced)
-PROFIT_TAKING_LEVELS=20:0.25,40:0.5     # Profit levels (threshold_pct:allocation)
+# Risk Management (crypto-appropriate levels)
+BASE_STOP_LOSS_PCT=18.0                  # Base stop loss percentage (crypto-adjusted)
+VOLATILITY_MULTIPLIER=1.5                # Volatility adjustment multiplier
+EMERGENCY_STOP_LOSS_PCT=30.0             # Emergency stop loss (crypto-adjusted)
+MAX_DAILY_TRADES=10                      # Maximum trades per day per asset
 
 # Portfolio Management
 REBALANCING_ENABLED=false                # Enable portfolio rebalancing
 TARGET_ALLOCATIONS=BTC-EUR:0.6,ETH-EUR:0.4  # Target allocations
-MAX_DAILY_TRADES=10                      # Maximum trades per day per asset
-EMERGENCY_STOP_LOSS_PCT=25.0             # Emergency stop loss threshold
 ```
 
 ## Common Development Commands
@@ -178,6 +198,9 @@ python test_simulator.py
 
 # Simple functionality test  
 python test_simulator_simple.py
+
+# Test Asset Protection Upgrades (v3.0 features)
+python test_asset_protection_upgrades.py
 ```
 
 ### Testing
@@ -246,7 +269,17 @@ The bot uses threading for concurrent operations:
 
 ### Advanced Features (Optional)
 
-#### Enhanced Asset Protection Strategy (NEW)
+#### Enhanced Asset Protection Strategy (UPGRADED v3.0)
+- **Recovery Rebuy System**: Solves "missed opportunity" problem by catching recoveries from ANY significant drop (≥15%) with 8% bounce trigger
+- **Directional DCA**: Smart momentum-based timing reduces DCA when falling through levels (avoid falling knives), increases when bouncing off levels
+- **Circuit Breaker Protection**: Stops all buying when losses exceed -25% to prevent cascade failures during crashes
+- **Coordinated Strategy Levels**: Fixed swing levels (sell -12%/-18%, rebuy -35%/-50%) eliminate conflicts with DCA levels (-15%/-25%/-40%)
+- **Position Size Controls**: Prevents over-exposure with maximum 2x position multiplier across all strategies
+- **Crypto-Optimized Thresholds**: Volatility-appropriate levels designed for 15-40% crypto market moves
+- **Enhanced Price Tracking**: 24-hour rolling price history with momentum calculation for intelligent decision-making
+- **Multi-Asset Intelligence**: Individual tracking and coordination for each protected asset (BTC, ETH, etc.)
+
+#### Legacy Asset Protection Features
 - **Enhanced Trailing Profit Taking**: Gradual profit capture as prices rise (starts at +8%, sells 2% per 5% trailing)
 - **Dynamic Buyback System**: Automatically buys back near recent sell levels to maintain position exposure
 - **Trade Cost Optimization**: Minimum trade thresholds to avoid unnecessary fees (€20 minimum, 2% move threshold)
@@ -258,7 +291,6 @@ The bot uses threading for concurrent operations:
 - **Portfolio Rebalancing**: Maintain target asset allocations automatically
 - **Emergency Stop Loss**: Hard limit protection against severe losses
 - **Daily Budget Management**: Prevent excessive trading with daily limits
-- **Circuit Breaker Protection**: System stability against API failures
 
 #### Dip Buying Strategy  
 - **Post-Sale Monitoring**: Automatically rebuy assets after profitable sales when price drops
@@ -271,6 +303,9 @@ The bot uses threading for concurrent operations:
 - **Mock API Simulation**: Safe testing environment with realistic market behavior
 - **Performance Analysis**: Detailed P&L analysis and strategy optimization
 - **Risk Assessment**: Comprehensive reporting on strategy effectiveness
+- **Upgrade Guide Testing**: Dedicated simulator (`test_asset_protection_upgrades.py`) validates all v3.0 features
+- **Scenario Validation**: Tests "missed opportunity" recovery, directional DCA, circuit breaker protection
+- **Multi-Asset Simulation**: Concurrent BTC/ETH testing with realistic crypto volatility patterns
 
 ## Testing
 
@@ -349,6 +384,17 @@ file_path.write_text(content)
 The simulator and test files have been updated with these fixes. Use them as templates for new Python files that include Unicode characters.
 
 ## Development Notes
+
+### Recent v3.0 Upgrade Guide Implementation
+- **Asset Protection Upgrades**: Comprehensive implementation of the Asset Protection Upgrade Guide
+- **Recovery Rebuy System**: Solves "missed opportunity" problem - catches recoveries from any significant drop (≥15%)
+- **Directional DCA**: Smart momentum-based timing prevents "falling knife" purchases
+- **Circuit Breaker Protection**: Stops buying during severe crashes (-25% loss threshold)
+- **Coordinated Strategy Levels**: Eliminates conflicting buy/sell at same price levels
+- **Position Size Controls**: Prevents over-exposure with 2x position multiplier limits
+- **Crypto-Optimized Levels**: Volatility-appropriate thresholds (15-40% moves vs 5-30%)
+- **Enhanced Price Tracking**: 24-hour rolling price history with momentum calculation
+- **Comprehensive Testing**: Full simulation suite validates all upgrade features
 
 ### Recent v2.0 Improvements
 - **Thread Safety**: All dip buying components now use atomic operations and proper locking

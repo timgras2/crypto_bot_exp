@@ -104,6 +104,19 @@ class AssetProtectionConfig:
         DipLevel(threshold_pct=Decimal('30'), capital_allocation=Decimal('0.3'))
     ])
     
+    # Directional DCA (smart timing based on momentum - upgrade guide implementation)
+    directional_dca_enabled: bool = True                    # Enable directional DCA
+    dca_momentum_hours: int = 1                             # Hours to look back for momentum  
+    dca_falling_multiplier: Decimal = Decimal('0.5')       # Reduce DCA when falling through level
+    dca_bouncing_multiplier: Decimal = Decimal('1.5')      # Increase DCA when bouncing off level
+    dca_momentum_threshold: Decimal = Decimal('0.5')       # Minimum % momentum to trigger logic
+    
+    # Recovery Rebuy System (buy on recoveries from any significant drop)
+    recovery_rebuy_enabled: bool = True                     # Enable recovery rebuys
+    min_recovery_threshold_pct: Decimal = Decimal('15.0')  # Minimum drop required to track for recovery
+    recovery_bounce_pct: Decimal = Decimal('8.0')          # % bounce from low to trigger rebuy
+    recovery_rebuy_allocation: Decimal = Decimal('0.3')    # Portion of cash reserves to use for recovery rebuy
+    
     # Profit taking on pumps
     profit_taking_enabled: bool = True
     profit_levels: List[ProfitLevel] = field(default_factory=lambda: [
@@ -121,15 +134,23 @@ class AssetProtectionConfig:
     emergency_stop_loss_pct: Decimal = Decimal('25.0')  # Emergency stop if loss exceeds this
     position_size_limit_pct: Decimal = Decimal('50.0')  # Max percentage of budget per asset
     
+    # Position size controls (upgrade guide implementation)
+    max_position_multiplier: Decimal = Decimal('2.0')     # Max 2x original position
+    position_size_check_enabled: bool = True              # Enable position monitoring
+    
+    # Loss circuit breaker (upgrade guide implementation)
+    loss_circuit_breaker_pct: Decimal = Decimal('15.0')  # Stop buying at -15% loss
+    circuit_breaker_enabled: bool = True                  # Enable circuit breaker
+    
     # Swing trading protection (sell on drops, rebuy at lows)
     swing_trading_enabled: bool = False     # Enable swing trading mode
     
-    # Standard swing levels (used in normal/bull markets)
+    # Fixed swing levels to avoid DCA conflicts (sell early, rebuy at major drops)
     swing_levels: List[SwingLevel] = field(default_factory=lambda: [
-        SwingLevel(threshold_pct=Decimal('5'), action='sell', allocation=Decimal('0.25')),
-        SwingLevel(threshold_pct=Decimal('10'), action='sell', allocation=Decimal('0.25')),
-        SwingLevel(threshold_pct=Decimal('20'), action='rebuy', allocation=Decimal('0.5')),
-        SwingLevel(threshold_pct=Decimal('30'), action='rebuy', allocation=Decimal('0.5'))
+        SwingLevel(threshold_pct=Decimal('5'), action='sell', allocation=Decimal('0.15')),   # -5%: sell 15% (early warning)
+        SwingLevel(threshold_pct=Decimal('8'), action='sell', allocation=Decimal('0.20')),   # -8%: sell 20% (before -10% DCA)
+        SwingLevel(threshold_pct=Decimal('30'), action='rebuy', allocation=Decimal('0.40')),  # -30%: rebuy 40% (after major drop)
+        SwingLevel(threshold_pct=Decimal('40'), action='rebuy', allocation=Decimal('0.60'))   # -40%: rebuy 60% (confirmed bottom)
     ])
     
     # Bear market swing levels (more aggressive selling, deeper rebuy levels)
@@ -497,6 +518,41 @@ def _load_asset_protection_config() -> AssetProtectionConfig:
         ),
         position_size_limit_pct=_validate_decimal_range(
             os.getenv("POSITION_SIZE_LIMIT_PCT", "50.0"), "POSITION_SIZE_LIMIT_PCT", 5.0, 100.0
+        ),
+        # Position size controls (upgrade guide implementation)
+        max_position_multiplier=_validate_decimal_range(
+            os.getenv("MAX_POSITION_MULTIPLIER", "2.0"), "MAX_POSITION_MULTIPLIER", 1.0, 10.0
+        ),
+        position_size_check_enabled=os.getenv("POSITION_SIZE_CHECK_ENABLED", "true").lower() in ('true', '1', 'yes', 'on'),
+        # Loss circuit breaker (upgrade guide implementation)
+        loss_circuit_breaker_pct=_validate_decimal_range(
+            os.getenv("LOSS_CIRCUIT_BREAKER_PCT", "15.0"), "LOSS_CIRCUIT_BREAKER_PCT", 5.0, 50.0
+        ),
+        circuit_breaker_enabled=os.getenv("CIRCUIT_BREAKER_ENABLED", "true").lower() in ('true', '1', 'yes', 'on'),
+        # Directional DCA (upgrade guide implementation)
+        directional_dca_enabled=os.getenv("DIRECTIONAL_DCA_ENABLED", "true").lower() in ('true', '1', 'yes', 'on'),
+        dca_momentum_hours=_validate_int_range(
+            os.getenv("DCA_MOMENTUM_HOURS", "1"), "DCA_MOMENTUM_HOURS", 1, 24
+        ),
+        dca_falling_multiplier=_validate_decimal_range(
+            os.getenv("DCA_FALLING_MULTIPLIER", "0.5"), "DCA_FALLING_MULTIPLIER", 0.0, 2.0
+        ),
+        dca_bouncing_multiplier=_validate_decimal_range(
+            os.getenv("DCA_BOUNCING_MULTIPLIER", "1.5"), "DCA_BOUNCING_MULTIPLIER", 0.5, 5.0
+        ),
+        dca_momentum_threshold=_validate_decimal_range(
+            os.getenv("DCA_MOMENTUM_THRESHOLD", "0.5"), "DCA_MOMENTUM_THRESHOLD", 0.1, 5.0
+        ),
+        # Recovery rebuy system
+        recovery_rebuy_enabled=os.getenv("RECOVERY_REBUY_ENABLED", "true").lower() in ('true', '1', 'yes', 'on'),
+        min_recovery_threshold_pct=_validate_decimal_range(
+            os.getenv("MIN_RECOVERY_THRESHOLD_PCT", "15.0"), "MIN_RECOVERY_THRESHOLD_PCT", 5.0, 50.0
+        ),
+        recovery_bounce_pct=_validate_decimal_range(
+            os.getenv("RECOVERY_BOUNCE_PCT", "8.0"), "RECOVERY_BOUNCE_PCT", 2.0, 20.0
+        ),
+        recovery_rebuy_allocation=_validate_decimal_range(
+            os.getenv("RECOVERY_REBUY_ALLOCATION", "0.3"), "RECOVERY_REBUY_ALLOCATION", 0.1, 1.0
         ),
         # Swing trading configuration
         swing_trading_enabled=os.getenv("SWING_TRADING_ENABLED", "false").lower() in ('true', '1', 'yes', 'on'),

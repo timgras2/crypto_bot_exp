@@ -203,6 +203,13 @@ class AssetProtectionManager:
                 logger.debug(f"No price data for {market}")
                 return
             
+            # Update price history for momentum tracking (upgrade guide implementation)
+            self.state_manager.update_price_history(market, current_price)
+            
+            # Update lowest price tracking for recovery rebuys
+            if self.config.recovery_rebuy_enabled:
+                self.state_manager.update_lowest_price_tracking(market, current_price)
+            
             # Check daily trade limits
             if not self.state_manager.can_trade_today(market, self.config.max_daily_trades):
                 logger.debug(f"Daily trade limit reached for {market}")
@@ -227,6 +234,8 @@ class AssetProtectionManager:
             # Check swing trading opportunities
             if self.config.swing_trading_enabled:
                 self._check_swing_trading_opportunities(market, asset_info, current_price)
+                # Check for recovery rebuys (buy on recoveries from any significant drop)
+                self._check_recovery_rebuy_opportunities(market, asset_info, current_price)
             
             # Check enhanced protection opportunities (trailing profit + dynamic buybacks)
             self.enhanced_protection.check_enhanced_opportunities(market, current_price, asset_info)
@@ -281,7 +290,7 @@ class AssetProtectionManager:
         return False
     
     def _check_dca_opportunities(self, market: str, asset_info: ProtectedAssetInfo, current_price: Decimal) -> None:
-        """Check for DCA buying opportunities."""
+        """Check for DCA buying opportunities with upgrade guide improvements."""
         try:
             if not self.config.dca_levels:
                 return
@@ -289,13 +298,34 @@ class AssetProtectionManager:
             # Calculate current drop percentage from entry price
             drop_pct = ((asset_info.entry_price - current_price) / asset_info.entry_price) * 100
             
+            # Check loss circuit breaker (upgrade guide implementation)
+            if self._is_loss_circuit_breaker_triggered(market, current_price):
+                logger.info(f"🚨 Loss circuit breaker active for {market} - skipping DCA")
+                return
+            
+            # Check basic trend analysis for downtrend (upgrade guide implementation)
+            if self._is_downtrend_confirmed(market, current_price):
+                logger.debug(f"📉 Confirmed downtrend for {market} - being more selective with DCA")
+            
             # Find eligible DCA levels
             for i, dca_level in enumerate(self.config.dca_levels, 1):
                 if drop_pct >= dca_level.threshold_pct and i not in asset_info.completed_dca_levels:
-                    # Calculate DCA amount
-                    dca_amount = self.config.max_protection_budget * dca_level.capital_allocation
+                    # Calculate base DCA amount
+                    base_dca_amount = self.config.max_protection_budget * dca_level.capital_allocation
                     
-                    logger.info(f"🎯 DCA opportunity: {market} level {i} at {drop_pct:.1f}% drop")
+                    # Apply directional analysis (upgrade guide implementation)
+                    dca_amount = self._calculate_directional_dca_amount(market, current_price, base_dca_amount)
+                    
+                    if dca_amount <= 0:
+                        logger.info(f"📊 DCA skipped for {market} level {i}: directional analysis suggests waiting")
+                        continue
+                    
+                    # Check position size limits (upgrade guide implementation)
+                    if not self._check_position_size_limits(market, dca_amount):
+                        logger.warning(f"⚠️ DCA skipped for {market} level {i}: would exceed position size limits")
+                        continue
+                    
+                    logger.info(f"🎯 DCA opportunity: {market} level {i} at {drop_pct:.1f}% drop (amount: €{dca_amount})")
                     
                     # Execute DCA buy (budget checking happens inside _execute_buy_order)
                     if self._execute_buy_order(market, dca_amount, "dca_buy", 
@@ -360,6 +390,13 @@ class AssetProtectionManager:
                         # Check if this rebuy level is already completed
                         if i not in asset_info.completed_swing_rebuy_levels:
                             logger.info(f"🔄 SWING REBUY opportunity: {market} level {i} at {drop_pct:.1f}% drop")
+                            
+                            # Apply trend analysis for rebuys (upgrade guide implementation)
+                            if self._is_downtrend_confirmed(market, current_price):
+                                # Only rebuy at deeper levels during downtrends
+                                if drop_pct < 35:  # Require -35% drop minimum
+                                    logger.info(f"⏳ SWING REBUY delayed: {market} in confirmed downtrend, waiting for deeper drop")
+                                    continue
                             
                             # Execute swing rebuy using cash reserves
                             if self._execute_swing_rebuy(market, swing_level.allocation, i, drop_pct):
@@ -914,3 +951,215 @@ class AssetProtectionManager:
         except Exception as e:
             logger.error(f"Error generating status summary: {e}")
             return {'enabled': self.config.enabled, 'error': str(e)}
+    
+    # =========================================================================
+    # UPGRADE GUIDE IMPLEMENTATIONS
+    # =========================================================================
+    
+    def _check_position_size_limits(self, market: str, additional_amount_eur: Decimal) -> bool:
+        """Check if additional purchase would exceed position size limits."""
+        if not self.config.position_size_check_enabled:
+            return True
+            
+        asset_info = self.state_manager.get_asset_info(market)
+        if not asset_info:
+            return True
+        
+        # Calculate what position would be after purchase
+        current_position_value = asset_info.current_position_eur
+        total_after_purchase = current_position_value + additional_amount_eur
+        
+        # Check against initial investment multiplier
+        max_allowed = asset_info.total_invested_eur * self.config.max_position_multiplier
+        
+        if total_after_purchase > max_allowed:
+            logger.warning(f"Position size limit exceeded for {market}: "
+                         f"would be €{total_after_purchase:.2f} vs max €{max_allowed:.2f} "
+                         f"({self.config.max_position_multiplier}x initial)")
+            return False
+            
+        return True
+    
+    def _is_loss_circuit_breaker_triggered(self, market: str, current_price: Decimal) -> bool:
+        """Check if losses exceed circuit breaker threshold."""
+        if not self.config.circuit_breaker_enabled:
+            return False
+            
+        asset_info = self.state_manager.get_asset_info(market)
+        if not asset_info:
+            return False
+        
+        # Calculate loss from original entry
+        loss_pct = ((asset_info.entry_price - current_price) / asset_info.entry_price) * 100
+        
+        if loss_pct >= self.config.loss_circuit_breaker_pct:
+            logger.warning(f"🚨 LOSS CIRCUIT BREAKER triggered for {market}: {loss_pct:.1f}% loss")
+            return True
+            
+        return False
+    
+    def _is_downtrend_confirmed(self, market: str, current_price: Decimal) -> bool:
+        """Basic trend analysis - check if we're in confirmed downtrend."""
+        asset_info = self.state_manager.get_asset_info(market)
+        if not asset_info:
+            return False
+        
+        # Simple trend: if down >15% from entry, consider downtrend
+        drop_from_entry = ((asset_info.entry_price - current_price) / asset_info.entry_price) * 100
+        
+        if drop_from_entry > 15:
+            logger.debug(f"{market} in downtrend: {drop_from_entry:.1f}% below entry")
+            return True
+            
+        return False
+    
+    def _calculate_directional_dca_amount(self, market: str, current_price: Decimal, 
+                                        base_amount: Decimal) -> Decimal:
+        """Calculate DCA amount based on price direction and momentum."""
+        if not self.config.directional_dca_enabled:
+            return base_amount
+            
+        # Get price momentum
+        momentum = self.state_manager.get_price_momentum(market, self.config.dca_momentum_hours)
+        if momentum is None:
+            return base_amount
+            
+        # Determine if price is falling through level or bouncing off it
+        if momentum >= self.config.dca_momentum_threshold:
+            # Price bouncing up (recovery) - good time to buy more
+            adjusted_amount = base_amount * self.config.dca_bouncing_multiplier
+            logger.info(f"🔄 DIRECTIONAL DCA: {market} bouncing (+{momentum:.1f}%) - "
+                       f"increasing to {self.config.dca_bouncing_multiplier}x")
+            return adjusted_amount
+            
+        elif momentum <= -self.config.dca_momentum_threshold:
+            # Price falling through level - reduce exposure
+            adjusted_amount = base_amount * self.config.dca_falling_multiplier
+            logger.info(f"📉 DIRECTIONAL DCA: {market} falling ({momentum:.1f}%) - "
+                       f"reducing to {self.config.dca_falling_multiplier}x")
+            return adjusted_amount
+            
+        else:
+            # Momentum neutral - use base amount
+            logger.debug(f"📊 DIRECTIONAL DCA: {market} momentum neutral ({momentum:.1f}%) - "
+                        f"using base amount")
+            return base_amount
+    
+    def _check_recovery_rebuy_opportunities(self, market: str, asset_info: ProtectedAssetInfo, current_price: Decimal) -> None:
+        """Check for recovery rebuy opportunities (buy on bounces from any significant drop)."""
+        try:
+            if not self.config.recovery_rebuy_enabled:
+                return
+                
+            # Skip if recovery rebuy already completed for this cycle
+            if asset_info.recovery_rebuy_completed:
+                return
+                
+            # Skip if no lowest price tracking yet
+            if asset_info.lowest_price_since_entry is None:
+                return
+                
+            # Check if we have swing cash reserves available
+            available_cash = self.state_manager.get_swing_cash_reserve(market)
+            if available_cash <= 0:
+                return
+            
+            # Calculate the drop from entry to lowest price
+            lowest_drop_pct = ((asset_info.entry_price - asset_info.lowest_price_since_entry) / asset_info.entry_price) * 100
+            
+            # Only track recovery if the drop was significant enough
+            if lowest_drop_pct < self.config.min_recovery_threshold_pct:
+                return
+            
+            # Calculate the bounce from lowest price
+            bounce_pct = ((current_price - asset_info.lowest_price_since_entry) / asset_info.lowest_price_since_entry) * 100
+            
+            # Check if bounce is significant enough to trigger recovery rebuy
+            if bounce_pct >= self.config.recovery_bounce_pct:
+                # Calculate recovery rebuy amount
+                recovery_amount = available_cash * self.config.recovery_rebuy_allocation
+                
+                logger.info(f"🔄 RECOVERY REBUY opportunity: {market}")
+                logger.info(f"   Drop: {lowest_drop_pct:.1f}% to €{asset_info.lowest_price_since_entry}")
+                logger.info(f"   Bounce: {bounce_pct:.1f}% to €{current_price}")
+                logger.info(f"   Recovery rebuy: €{recovery_amount:.2f}")
+                
+                # Check position size limits
+                if not self._check_position_size_limits(market, recovery_amount):
+                    logger.warning(f"⚠️ Recovery rebuy skipped: would exceed position size limits")
+                    return
+                
+                # Execute recovery rebuy
+                if self._execute_recovery_rebuy(market, recovery_amount, bounce_pct, lowest_drop_pct):
+                    print(f"🚀 RECOVERY REBUY: {market} - €{recovery_amount:.2f} on {bounce_pct:.1f}% bounce from {lowest_drop_pct:.1f}% drop")
+                    
+        except Exception as e:
+            logger.error(f"Error checking recovery rebuy opportunities for {market}: {e}")
+    
+    def _execute_recovery_rebuy(self, market: str, rebuy_amount_eur: Decimal, bounce_pct: float, drop_pct: float) -> bool:
+        """Execute a recovery rebuy order."""
+        try:
+            # Get current price
+            current_price = self._get_current_price(market)
+            if current_price is None:
+                logger.error(f"Could not get current price for recovery rebuy {market}")
+                return False
+            
+            # Use swing cash reserves
+            if not self.state_manager.use_swing_cash_reserve(market, rebuy_amount_eur):
+                logger.debug(f"Failed to reserve swing cash for {market} recovery rebuy")
+                return False
+            
+            # Place market buy order
+            body = {
+                'market': market,
+                'side': 'buy',
+                'orderType': 'market',
+                'amountQuote': str(rebuy_amount_eur),
+                'operatorId': self.trading_config.operator_id
+            }
+            
+            try:
+                # Use trading circuit breaker for buy order execution
+                response = self.trading_circuit_breaker.call(
+                    f"recovery_rebuy_{market}",
+                    self.api.send_request,
+                    "POST",
+                    "/order",
+                    body
+                )
+                
+                if response:
+                    # Calculate crypto amount received (approximate)
+                    crypto_amount = rebuy_amount_eur / current_price
+                    
+                    # Record the trade
+                    self.state_manager.record_trade(
+                        market=market,
+                        trade_type="recovery_rebuy",
+                        price=current_price,
+                        amount_eur=rebuy_amount_eur,
+                        amount_crypto=crypto_amount,
+                        reason=f"Recovery rebuy: {bounce_pct:.1f}% bounce from {drop_pct:.1f}% drop"
+                    )
+                    
+                    # Mark recovery rebuy as completed for this cycle
+                    self.state_manager.mark_recovery_rebuy_completed(market)
+                    
+                    logger.info(f"Executed recovery rebuy for {market}: €{rebuy_amount_eur} at €{current_price}")
+                    return True
+                else:
+                    logger.error(f"Recovery rebuy order failed for {market}")
+                    # Return cash to reserves since order failed
+                    self.state_manager.add_swing_cash_reserve(market, rebuy_amount_eur)
+                    return False
+                    
+            except CircuitBreakerError as e:
+                logger.warning(f"Trading circuit breaker blocked recovery rebuy for {market}: {e}")
+                # Return cash to reserves since order was blocked
+                self.state_manager.add_swing_cash_reserve(market, rebuy_amount_eur)
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error executing recovery rebuy for {market}: {e}")
+            return False

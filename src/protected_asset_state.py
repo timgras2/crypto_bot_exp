@@ -17,6 +17,13 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class PricePoint:
+    """Price point with timestamp for momentum tracking."""
+    price: Decimal
+    timestamp: datetime
+
+
+@dataclass
 class TradeRecord:
     """Record of a completed protection trade."""
     trade_type: str  # 'dca_buy', 'profit_sell', 'stop_loss', 'rebalance', 'swing_sell', 'swing_rebuy'
@@ -61,6 +68,14 @@ class ProtectedAssetInfo:
     # Risk management
     max_drawdown_pct: Decimal = Decimal('0')
     peak_value_eur: Decimal = Decimal('0')
+    
+    # Price history for momentum tracking (upgrade guide implementation)
+    price_history: List[PricePoint] = field(default_factory=list)
+    max_price_history_hours: int = 24  # Keep 24 hours of price data
+    
+    # Recovery rebuy tracking
+    lowest_price_since_entry: Optional[Decimal] = None      # Track lowest price for recovery rebounds
+    recovery_rebuy_completed: bool = False                  # Track if recovery rebuy already done
     
     created_at: datetime = None
     updated_at: datetime = None
@@ -407,6 +422,15 @@ class ProtectedAssetStateManager:
                         )
                         trade_history.append(trade_record)
                     
+                    # Convert price history
+                    price_history = []
+                    for price_data in asset_data.get('price_history', []):
+                        price_point = PricePoint(
+                            price=Decimal(price_data['price']),
+                            timestamp=datetime.fromisoformat(price_data['timestamp'])
+                        )
+                        price_history.append(price_point)
+                    
                     # Create asset info
                     asset_info = ProtectedAssetInfo(
                         market=market,
@@ -428,6 +452,10 @@ class ProtectedAssetStateManager:
                         last_rebalance=datetime.fromisoformat(asset_data['last_rebalance']) if asset_data.get('last_rebalance') else None,
                         max_drawdown_pct=Decimal(asset_data.get('max_drawdown_pct', '0')),
                         peak_value_eur=Decimal(asset_data.get('peak_value_eur', asset_data['current_position_eur'])),
+                        price_history=price_history,
+                        max_price_history_hours=asset_data.get('max_price_history_hours', 24),
+                        lowest_price_since_entry=Decimal(asset_data['lowest_price_since_entry']) if asset_data.get('lowest_price_since_entry') else None,
+                        recovery_rebuy_completed=asset_data.get('recovery_rebuy_completed', False),
                         created_at=datetime.fromisoformat(asset_data.get('created_at', datetime.now().isoformat())),
                         updated_at=datetime.fromisoformat(asset_data.get('updated_at', datetime.now().isoformat()))
                     )
@@ -479,6 +507,15 @@ class ProtectedAssetStateManager:
                     }
                     trade_history_data.append(trade_data)
                 
+                # Convert price history
+                price_history_data = []
+                for price_point in asset_info.price_history:
+                    price_data = {
+                        'price': str(price_point.price),
+                        'timestamp': price_point.timestamp.isoformat()
+                    }
+                    price_history_data.append(price_data)
+                
                 # Convert asset info
                 asset_data = {
                     'entry_price': str(asset_info.entry_price),
@@ -499,6 +536,10 @@ class ProtectedAssetStateManager:
                     'last_rebalance': asset_info.last_rebalance.isoformat() if asset_info.last_rebalance else None,
                     'max_drawdown_pct': str(asset_info.max_drawdown_pct),
                     'peak_value_eur': str(asset_info.peak_value_eur),
+                    'price_history': price_history_data,
+                    'max_price_history_hours': asset_info.max_price_history_hours,
+                    'lowest_price_since_entry': str(asset_info.lowest_price_since_entry) if asset_info.lowest_price_since_entry else None,
+                    'recovery_rebuy_completed': asset_info.recovery_rebuy_completed,
                     'created_at': asset_info.created_at.isoformat(),
                     'updated_at': asset_info.updated_at.isoformat()
                 }
@@ -527,6 +568,111 @@ class ProtectedAssetStateManager:
             if temp_file.exists():
                 temp_file.unlink()
     
+    def update_price_history(self, market: str, current_price: Decimal) -> None:
+        """Update price history for momentum tracking."""
+        try:
+            with self._lock:
+                if market not in self._state:
+                    return
+                    
+                asset_info = self._state[market]
+                current_time = datetime.now()
+                
+                # Add new price point
+                asset_info.price_history.append(PricePoint(
+                    price=current_price,
+                    timestamp=current_time
+                ))
+                
+                # Clean old price points (keep last max_price_history_hours)
+                cutoff_time = current_time - timedelta(hours=asset_info.max_price_history_hours)
+                asset_info.price_history = [
+                    point for point in asset_info.price_history
+                    if point.timestamp >= cutoff_time
+                ]
+                
+                # Update timestamp but don't save on every price update (too frequent)
+                asset_info.updated_at = current_time
+                
+        except Exception as e:
+            logger.error(f"Error updating price history for {market}: {e}")
+    
+    def get_price_momentum(self, market: str, hours_back: int = 1) -> Optional[Decimal]:
+        """Calculate price momentum over specified hours."""
+        try:
+            with self._lock:
+                if market not in self._state:
+                    return None
+                    
+                asset_info = self._state[market]
+                if not asset_info.price_history:
+                    return None
+                    
+                current_time = datetime.now()
+                lookback_time = current_time - timedelta(hours=hours_back)
+                
+                # Get current price (most recent)
+                current_price = asset_info.price_history[-1].price
+                
+                # Find historical price around lookback time
+                historical_price = None
+                for point in reversed(asset_info.price_history):
+                    if point.timestamp <= lookback_time:
+                        historical_price = point.price
+                        break
+                        
+                if historical_price is None:
+                    return None
+                    
+                # Calculate momentum as percentage change
+                momentum = ((current_price - historical_price) / historical_price) * 100
+                return momentum
+                
+        except Exception as e:
+            logger.error(f"Error calculating price momentum for {market}: {e}")
+            return None
+    
+    def update_lowest_price_tracking(self, market: str, current_price: Decimal) -> None:
+        """Update lowest price tracking for recovery rebuys."""
+        try:
+            with self._lock:
+                if market not in self._state:
+                    return
+                    
+                asset_info = self._state[market]
+                
+                # Initialize lowest price if not set
+                if asset_info.lowest_price_since_entry is None:
+                    asset_info.lowest_price_since_entry = current_price
+                    asset_info.updated_at = datetime.now()
+                    return
+                
+                # Update if this is a new low
+                if current_price < asset_info.lowest_price_since_entry:
+                    asset_info.lowest_price_since_entry = current_price
+                    # Reset recovery rebuy flag when we hit new lows
+                    asset_info.recovery_rebuy_completed = False
+                    asset_info.updated_at = datetime.now()
+                    logger.debug(f"New low for {market}: €{current_price}")
+                    
+        except Exception as e:
+            logger.error(f"Error updating lowest price tracking for {market}: {e}")
+    
+    def mark_recovery_rebuy_completed(self, market: str) -> None:
+        """Mark recovery rebuy as completed for this cycle."""
+        try:
+            with self._lock:
+                if market not in self._state:
+                    return
+                    
+                self._state[market].recovery_rebuy_completed = True
+                self._state[market].updated_at = datetime.now()
+                self._save_state()
+                logger.debug(f"Marked recovery rebuy completed for {market}")
+                
+        except Exception as e:
+            logger.error(f"Error marking recovery rebuy completed for {market}: {e}")
+
     def add_swing_cash_reserve(self, market: str, amount_eur: Decimal) -> None:
         """Add cash to swing trading reserves from a sell operation."""
         with self._lock:
