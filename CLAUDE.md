@@ -22,6 +22,13 @@ crypto_bot_main/
 │   ├── volatility_calculator.py    # Dynamic volatility-based risk management
 │   ├── protected_asset_state.py    # Thread-safe asset protection state
 │   ├── circuit_breaker.py          # System stability protection
+│   ├── sentiment/            # Social media sentiment analysis
+│   │   ├── __init__.py      # Sentiment package initialization
+│   │   ├── sentiment_analyzer.py # VADER-based crypto sentiment analysis
+│   │   ├── data_collector.py     # Multi-source social media data coordinator
+│   │   ├── reddit_collector.py   # Reddit API data collection
+│   │   ├── discord_collector.py  # Discord monitoring (optional)
+│   │   └── sentiment_cache.py    # Caching and deduplication system
 │   └── crypto_bot.egg-info/  # Package metadata (auto-generated)
 ├── simulator/                # Trading strategy simulator
 │   ├── __init__.py          # Package initialization
@@ -47,7 +54,10 @@ crypto_bot_main/
 ├── data/                    # Data persistence directory
 │   ├── README.md           # Data directory documentation
 │   ├── previous_markets.json # Historical market listings
-│   └── active_trades.json  # Active trade state (auto-managed)
+│   ├── active_trades.json  # Active trade state (auto-managed)
+│   ├── sentiment_cache/    # Sentiment analysis cache
+│   │   └── btc_sentiment.json # Cached sentiment data per asset
+│   └── test_sentiment_cache/ # Test sentiment cache directory
 ├── logs/                   # Logging directory
 │   ├── README.md          # Logging documentation
 │   └── trading.log        # Bot activity logs (auto-generated)
@@ -61,11 +71,19 @@ crypto_bot_main/
 ├── start_bot.sh         # Unix shell launcher
 ├── run_simulation.py    # Trading strategy simulator launcher
 ├── test_simulator.py    # Comprehensive simulator tests
+├── test_social_media_pipeline.py # Sentiment analysis integration tests
+├── test_reddit_connection.py # Reddit API connection tests
+├── test_vader_sentiment.py # Sentiment analyzer validation
+├── scripts/             # Utility scripts
+│   ├── review_trades.py # Trade performance analysis
+│   ├── review_trades.bat # Windows launcher for trade review
+│   └── sell_small_holdings.py # Portfolio cleanup utility
 ├── .env.example         # Environment variables template
 ├── CLAUDE.md           # This file - main development guide
 ├── CLAUDE_DIP_BUY.md   # Comprehensive dip buying strategy guide
 ├── CLAUDE_ASSET_PROTECTION.md # Asset protection strategy guide
 ├── CLAUDE_SIMULATOR.md # Detailed simulator documentation
+├── SOCIAL_MEDIA_SENTIMENT_SETUP.md # Sentiment analysis setup guide
 ├── QUICKSTART.md       # Quick setup guide
 ├── SAFETY_CHECKLIST.md # Pre-trading safety checks
 ├── FIRST_RUN_BEHAVIOR.md # First run documentation
@@ -84,6 +102,11 @@ The main trading bot consists of:
 - **BitvavoAPI** (`requests_handler.py`): Rate-limited API wrapper with retry logic
 - **Configuration** (`config.py`): Centralized configuration management with dataclasses
 - **CircuitBreaker** (`circuit_breaker.py`): System stability protection against cascade failures
+- **Sentiment Analysis System** (`sentiment/`): Social media sentiment analysis for position sizing
+  - **VaderSentimentAnalyzer**: Crypto-optimized sentiment scoring with 40+ specialized terms
+  - **MultiSourceDataCollector**: Unified interface for Reddit, Discord, and other platforms
+  - **SentimentCache**: File-based caching with deduplication and cleanup
+  - **RedditCollector**: Monitors 9 major crypto subreddits for new coin discussions
 
 ## Environment Configuration
 
@@ -159,7 +182,53 @@ MAX_DAILY_TRADES=10                      # Maximum trades per day per asset
 # Portfolio Management
 REBALANCING_ENABLED=false                # Enable portfolio rebalancing
 TARGET_ALLOCATIONS=BTC-EUR:0.6,ETH-EUR:0.4  # Target allocations
+
+# Social Media Sentiment Analysis (Optional - enhances position sizing)
+SENTIMENT_ENABLED=false                  # Enable sentiment-based position adjustment
+SENTIMENT_INFLUENCE=0.5                  # How much sentiment affects position size (0.0-1.0)
+MIN_SENTIMENT_CONFIDENCE=0.3             # Minimum confidence to use sentiment
+MAX_POSITION_MULTIPLIER_SENTIMENT=1.5    # Maximum position increase from positive sentiment
+
+# Reddit API credentials (required for sentiment analysis)
+REDDIT_CLIENT_ID=your_reddit_client_id
+REDDIT_CLIENT_SECRET=your_reddit_secret
+REDDIT_USERNAME=your_reddit_username
+REDDIT_PASSWORD=your_reddit_password
+
+# Discord API credentials (optional for additional sentiment data)
+DISCORD_BOT_TOKEN=your_discord_bot_token
 ```
+
+## Core Architecture Patterns
+
+### Configuration Management
+The bot uses a sophisticated dataclass-based configuration system in `config.py` that:
+- Validates all parameters at startup with range checking and format validation
+- Supports multiple configuration modes (trading, API, asset protection, sentiment analysis)
+- Uses environment variable override patterns with secure defaults
+- The `load_config()` function returns a 5-tuple: `(trading_config, api_config, dip_config, asset_protection_config, sentiment_config)`
+
+### Component Initialization Pattern
+The `TradingBot` class follows a conditional initialization pattern where advanced features are only loaded if enabled:
+- Core components (API, MarketTracker, TradeManager) are always initialized
+- Advanced features (AssetProtectionManager, DipBuyManager, SentimentCollector) are conditionally imported and initialized
+- Each optional component has fallback error handling that disables the feature on import failure
+- Thread-safe shutdown coordination across all initialized components
+
+### Thread Management Architecture
+The bot uses a multi-threaded approach with clear separation of concerns:
+- **Main thread**: New listing detection loop with interruptible sleep patterns
+- **Trade monitoring threads**: One per active trade for trailing stop-loss monitoring  
+- **Asset protection thread**: Separate thread for DCA/profit-taking operations (if enabled)
+- **Sentiment analysis threads**: ThreadPoolExecutor for concurrent data collection
+- All threads coordinate through shared state with proper locking mechanisms
+
+### Error Handling Strategy
+The codebase uses a layered error handling approach:
+- **API level**: Retry logic with exponential backoff in `requests_handler.py`
+- **Component level**: Graceful degradation when optional features fail to initialize
+- **Trade level**: Comprehensive validation before executing any financial operation
+- **System level**: Signal handlers for graceful shutdown with resource cleanup
 
 ## Common Development Commands
 
@@ -201,6 +270,15 @@ python test_simulator_simple.py
 
 # Test Asset Protection Upgrades (v3.0 features)
 python test_asset_protection_upgrades.py
+
+# Test social media sentiment analysis pipeline
+python test_social_media_pipeline.py
+
+# Test Reddit API connection
+python test_reddit_connection.py
+
+# Test VADER sentiment analyzer
+python test_vader_sentiment.py
 ```
 
 ### Testing
@@ -213,6 +291,39 @@ python -m pytest tests/test_config.py
 
 # Run tests with verbose output
 python -m pytest tests/ -v
+
+# Run single test method
+python -m pytest tests/test_config.py::test_load_config -v
+
+# Run sentiment analysis integration tests
+python test_sentiment_integration.py
+
+# Run with coverage (if pytest-cov is installed)
+python -m pytest tests/ --cov=src --cov-report=html
+```
+
+### Configuration Testing
+```bash
+# Test configuration loading without running the bot
+python -c "from src.config import load_config; configs = load_config(); print('Config loaded successfully')"
+
+# Validate environment variables
+python -c "from src.config import load_config; trading, api, dip, protection, sentiment = load_config(); print(f'Sentiment enabled: {sentiment.enabled}')"
+
+# Test specific API connection
+python test_reddit_connection.py
+```
+
+### Development Debugging
+```bash
+# Run bot with debug logging
+PYTHONPATH=src python src/main.py --log-level DEBUG
+
+# Test sentiment analysis pipeline
+python test_social_media_pipeline.py
+
+# Validate specific configuration values
+python -c "import os; from src.config import _validate_decimal_range; print(_validate_decimal_range(os.getenv('MAX_TRADE_AMOUNT', '10.0'), 'MAX_TRADE_AMOUNT', 1.0, 10000.0))"
 ```
 
 ## Dependencies
@@ -223,6 +334,9 @@ Key dependencies (see `requirements.txt`):
 - `requests>=2.31.0` - HTTP library for API calls
 - `urllib3>=2.0.0` - URL handling library
 - `pytest>=7.4.0` - Testing framework
+- `vaderSentiment>=3.3.2` - Sentiment analysis optimized for social media
+- `praw>=7.8.0` - Python Reddit API Wrapper (PRAW) for Reddit data collection
+- `discord.py>=2.6.0` - Discord bot library for Discord monitoring (optional)
 
 Development dependencies (optional, in `setup.py`):
 - `pytest-cov>=4.1.0` - Test coverage reporting
@@ -242,6 +356,7 @@ Development dependencies (optional, in `setup.py`):
 - Market data stored in `data/previous_markets.json` (new listing detection baseline)
 - Active trade state in `data/active_trades.json` (for recovery after restarts)
 - Trading logs written to `logs/trading.log` (bot activity and errors)
+- Sentiment analysis cache in `data/sentiment_cache/` (deduplication and performance)
 - All data directories created automatically if they don't exist
 - Trade state persistence ensures no lost positions during bot restarts
 
@@ -266,6 +381,7 @@ The bot uses threading for concurrent operations:
 - **Rate Limiting**: Respects exchange API limits with sliding window implementation
 - **Comprehensive Logging**: Detailed activity logs for debugging and monitoring
 - **Input Validation**: Extensive validation of all trading parameters and market names
+- **Social Media Sentiment Analysis**: Position sizing adjustment based on Reddit community sentiment (optional)
 
 ### Advanced Features (Optional)
 
@@ -298,6 +414,15 @@ The bot uses threading for concurrent operations:
 - **Market Condition Filtering**: Optional BTC trend analysis to gate rebuy decisions
 - **Thread-Safe State Management**: Robust persistence with atomic operations and recovery
 
+#### Social Media Sentiment Analysis (NEW)
+- **Multi-Platform Data Collection**: Monitors Reddit (9 subreddits) and Discord channels for new coin discussions
+- **VADER Sentiment Analysis**: Crypto-optimized with 40+ specialized terms (HODL, diamond hands, rugpull, moon, etc.)
+- **Intelligent Position Sizing**: Adjusts trade amounts based on community sentiment and confidence levels
+- **Spam and Pump Detection**: Filters obvious pump attempts, excessive emojis, and bot-generated content
+- **Smart Caching System**: File-based deduplication prevents redundant API calls and analysis
+- **Conservative Risk Management**: Maximum 1.5x position increase, requires high confidence scores
+- **Zero-Cost Implementation**: Uses free Reddit API (100 requests/minute)
+
 ### Testing & Simulation
 - **Historical Backtesting**: Test strategies against real historical price data
 - **Mock API Simulation**: Safe testing environment with realistic market behavior
@@ -307,14 +432,28 @@ The bot uses threading for concurrent operations:
 - **Scenario Validation**: Tests "missed opportunity" recovery, directional DCA, circuit breaker protection
 - **Multi-Asset Simulation**: Concurrent BTC/ETH testing with realistic crypto volatility patterns
 
-## Testing
+## Testing Architecture
 
-The project includes comprehensive unit tests covering:
-- Configuration validation and environment loading
-- Market tracking and new listing detection  
-- API request handling and rate limiting
-- Trade execution and monitoring logic
-- Error handling and edge cases
+The project includes comprehensive testing at multiple levels:
+
+### Unit Tests (`tests/` directory)
+- **Configuration validation** (`test_config.py`): Environment loading, parameter validation, dataclass construction
+- **Market tracking** (`test_market_utils.py`): New listing detection logic, JSON persistence
+- **API handling** (`test_requests_handler.py`): Rate limiting, retry logic, error handling
+- **Trade execution** (`test_trade_logic.py`): Order placement, monitoring, threading
+- **Asset protection** (`test_asset_protection.py`): 44 comprehensive tests covering DCA, profit taking, circuit breaker
+
+### Integration Tests (root directory)
+- **Sentiment pipeline** (`test_social_media_pipeline.py`): End-to-end sentiment analysis workflow
+- **Reddit connectivity** (`test_reddit_connection.py`): API authentication and data collection
+- **Sentiment integration** (`test_sentiment_integration.py`): Trading bot integration with sentiment analysis
+- **Simulator validation** (`test_simulator.py`): Strategy backtesting and performance analysis
+
+### Testing Configuration
+The project uses pytest with configuration in `pytest.ini`:
+- Test discovery in `tests/` directory with `src/` on Python path
+- Verbose output and short tracebacks by default
+- Follows standard pytest naming conventions
 
 Run tests with `python -m pytest tests/ -v` for detailed output.
 
@@ -326,6 +465,7 @@ Additional documentation files provide specific guidance:
 - `FIRST_RUN_BEHAVIOR.md` - What to expect on first execution
 - `BITVAVO_API_UPDATE.md` - Recent API changes and requirements
 - `TERMINAL_OUTPUT_EXAMPLE.md` - Example of typical bot output
+- `SOCIAL_MEDIA_SENTIMENT_SETUP.md` - Complete sentiment analysis setup guide
 
 ## Unicode and Encoding Issues (Windows)
 

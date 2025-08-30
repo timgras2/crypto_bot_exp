@@ -12,7 +12,7 @@ from trade_logic import TradeManager
 class TradingBot:
     def __init__(self) -> None:
         # Load configuration
-        self.trading_config, self.api_config, self.dip_config, self.asset_protection_config = load_config()
+        self.trading_config, self.api_config, self.dip_config, self.asset_protection_config, self.sentiment_config = load_config()
 
         # Initialize components
         self.api = BitvavoAPI(self.api_config)
@@ -61,6 +61,17 @@ class TradingBot:
             except ImportError as e:
                 logging.warning(f"Failed to import asset protection manager: {e}")
                 self.asset_protection_config.enabled = False
+
+        # Initialize sentiment analysis system (conditional)
+        self.sentiment_collector = None
+        if self.sentiment_config.enabled:
+            try:
+                from sentiment.data_collector import MultiSourceDataCollector
+                self.sentiment_collector = MultiSourceDataCollector(self.sentiment_config)
+                logging.info("Sentiment analysis system initialized")
+            except ImportError as e:
+                logging.warning(f"Failed to import sentiment analysis system: {e}")
+                self.sentiment_config.enabled = False
 
         # Initialize state
         self.previous_markets = self.market_tracker.load_previous_markets()
@@ -163,6 +174,14 @@ class TradingBot:
                 print(f"💸 Profit levels: {profit_str}")
         else:
             print(f"🛡️  Asset protection: DISABLED")
+            
+        # Show sentiment analysis status
+        if self.sentiment_config.enabled:
+            print(f"🧠 Sentiment analysis: ENABLED")
+            print(f"📊 Influence: {self.sentiment_config.influence:.1%} | Min confidence: {self.sentiment_config.min_confidence:.1%}")
+            print(f"📈 Max position multiplier: {self.sentiment_config.max_position_multiplier:.1f}x")
+        else:
+            print(f"🧠 Sentiment analysis: DISABLED")
         
         print("-" * 60)
         
@@ -230,6 +249,44 @@ class TradingBot:
                     logging.info(f"Attempting to trade new listing: {market}")
                     print(f"🔍 Analyzing {market}...")
 
+                    # Get base trade amount
+                    base_trade_amount = self.trading_config.max_trade_amount
+                    
+                    # Apply sentiment analysis to adjust position size (if enabled)
+                    sentiment_multiplier = 1.0
+                    if self.sentiment_config.enabled and self.sentiment_collector:
+                        try:
+                            # Extract base symbol from market (e.g., BTC from BTC-EUR)
+                            base_symbol = market.split('-')[0]
+                            print(f"🧠 Analyzing sentiment for {base_symbol}...")
+                            
+                            # Collect sentiment data
+                            sentiment_result = self.sentiment_collector.collect_for_symbol(base_symbol)
+                            
+                            if sentiment_result and sentiment_result.get('confidence', 0) >= float(self.sentiment_config.min_confidence):
+                                sentiment_score = sentiment_result.get('aggregated_sentiment', 0)
+                                confidence = sentiment_result.get('confidence', 0)
+                                
+                                # Calculate sentiment multiplier
+                                if sentiment_score > 0:
+                                    # Positive sentiment increases position size
+                                    sentiment_multiplier = 1.0 + (sentiment_score * confidence * float(self.sentiment_config.influence))
+                                    sentiment_multiplier = min(sentiment_multiplier, float(self.sentiment_config.max_position_multiplier))
+                                elif sentiment_score < 0:
+                                    # Negative sentiment decreases position size
+                                    sentiment_multiplier = 1.0 + (sentiment_score * confidence * float(self.sentiment_config.influence))
+                                    sentiment_multiplier = max(sentiment_multiplier, 0.5)  # Don't go below 50% of normal size
+                                
+                                print(f"💭 Sentiment: {sentiment_score:.3f} (confidence: {confidence:.3f})")
+                                print(f"📊 Position multiplier: {sentiment_multiplier:.2f}x")
+                                logging.info(f"Sentiment analysis for {base_symbol}: score={sentiment_score:.3f}, confidence={confidence:.3f}, multiplier={sentiment_multiplier:.2f}")
+                            else:
+                                print(f"💭 Sentiment: Insufficient confidence or no data available")
+                                logging.info(f"Sentiment analysis skipped for {base_symbol}: insufficient confidence or no data")
+                        except Exception as e:
+                            print(f"⚠️  Sentiment analysis failed: {str(e)}")
+                            logging.warning(f"Sentiment analysis error for {market}: {e}")
+
                     # Try to get ticker data with retries (new markets may take time to have ticker data)
                     ticker = None
                     max_ticker_retries = 3
@@ -252,12 +309,10 @@ class TradingBot:
                         print(f"🎲 New listing might be too fresh - attempting trade without volume validation")
                         logging.warning(f"Proceeding with {market} trade without ticker validation - new listing")
                         
-                        # Proceed with trade but use smaller amount for safety
-                        trade_amount = min(
-                            self.trading_config.max_trade_amount * 0.5,  # Use 50% of max for unvalidated trades
-                            5.0  # Cap at €5 for safety
-                        )
-                        print(f"🛡️  Using reduced amount €{trade_amount} for safety")
+                        # Proceed with trade but use smaller amount for safety, adjusted by sentiment
+                        reduced_amount = base_trade_amount * 0.5 * sentiment_multiplier  # Use 50% of sentiment-adjusted amount for unvalidated trades
+                        trade_amount = min(reduced_amount, 5.0)  # Cap at €5 for safety
+                        print(f"🛡️  Using reduced amount €{trade_amount:.2f} for safety (sentiment-adjusted: {sentiment_multiplier:.2f}x)")
                         
                         buy_price = self.trade_manager.place_market_buy(market, trade_amount)
                         if buy_price:
@@ -286,10 +341,12 @@ class TradingBot:
                         logging.warning(f"Skipping {market} due to invalid volume data: {e}")
                         continue
 
-                    print(f"💸 EXECUTING BUY ORDER: €{self.trading_config.max_trade_amount} of {market}")
+                    # Calculate final trade amount with sentiment adjustment
+                    final_trade_amount = base_trade_amount * sentiment_multiplier
+                    print(f"💸 EXECUTING BUY ORDER: €{final_trade_amount:.2f} of {market} (base: €{base_trade_amount}, sentiment: {sentiment_multiplier:.2f}x)")
                     buy_price = self.trade_manager.place_market_buy(
                         market,
-                        self.trading_config.max_trade_amount
+                        final_trade_amount
                     )
 
                     if buy_price:

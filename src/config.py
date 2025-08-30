@@ -82,6 +82,29 @@ class TrendDetectionConfig:
     volatility_threshold: Decimal = Decimal('50.0')   # Daily volatility % for volatile mode
 
 @dataclass
+class SentimentConfig:
+    """Configuration for social media sentiment analysis."""
+    enabled: bool = False                           # Master feature toggle
+    influence: Decimal = Decimal('0.5')            # How much sentiment affects position size (0.0-1.0)
+    min_confidence: Decimal = Decimal('0.3')       # Minimum confidence to use sentiment
+    max_position_multiplier: Decimal = Decimal('1.5') # Maximum position increase from positive sentiment
+    
+    # Reddit API configuration (uppercase for collector compatibility)
+    REDDIT_CLIENT_ID: str = ""
+    REDDIT_CLIENT_SECRET: str = ""
+    REDDIT_USERNAME: str = ""
+    REDDIT_PASSWORD: str = ""
+    
+    # Discord API configuration (optional)
+    DISCORD_BOT_TOKEN: str = ""
+    
+    # Telegram API configuration (optional)
+    TELEGRAM_API_ID: str = ""
+    TELEGRAM_API_HASH: str = ""
+    TELEGRAM_PHONE_NUMBER: str = ""
+
+
+@dataclass
 class AssetProtectionConfig:
     """Configuration for asset protection strategy."""
     enabled: bool = False                    # Master feature toggle
@@ -477,6 +500,40 @@ def _load_dip_config() -> DipBuyConfig:
     )
 
 
+def _load_sentiment_config() -> SentimentConfig:
+    """Load sentiment analysis configuration from environment variables."""
+    enabled = os.getenv("SENTIMENT_ENABLED", "false").lower() in ('true', '1', 'yes', 'on')
+    
+    if not enabled:
+        # Return disabled config with defaults
+        return SentimentConfig(enabled=False)
+    
+    # Parse configuration only if enabled
+    return SentimentConfig(
+        enabled=True,
+        influence=_validate_decimal_range(
+            os.getenv("SENTIMENT_INFLUENCE", "0.5"), "SENTIMENT_INFLUENCE", 0.0, 1.0
+        ),
+        min_confidence=_validate_decimal_range(
+            os.getenv("MIN_SENTIMENT_CONFIDENCE", "0.3"), "MIN_SENTIMENT_CONFIDENCE", 0.0, 1.0
+        ),
+        max_position_multiplier=_validate_decimal_range(
+            os.getenv("MAX_POSITION_MULTIPLIER_SENTIMENT", "1.5"), "MAX_POSITION_MULTIPLIER_SENTIMENT", 1.0, 5.0
+        ),
+        # Reddit API configuration (uppercase for collector compatibility)
+        REDDIT_CLIENT_ID=os.getenv("REDDIT_CLIENT_ID", ""),
+        REDDIT_CLIENT_SECRET=os.getenv("REDDIT_CLIENT_SECRET", ""),
+        REDDIT_USERNAME=os.getenv("REDDIT_USERNAME", ""),
+        REDDIT_PASSWORD=os.getenv("REDDIT_PASSWORD", ""),
+        # Discord API configuration (optional)
+        DISCORD_BOT_TOKEN=os.getenv("DISCORD_BOT_TOKEN", ""),
+        # Telegram API configuration (optional)
+        TELEGRAM_API_ID=os.getenv("TELEGRAM_API_ID", ""),
+        TELEGRAM_API_HASH=os.getenv("TELEGRAM_API_HASH", ""),
+        TELEGRAM_PHONE_NUMBER=os.getenv("TELEGRAM_PHONE_NUMBER", "")
+    )
+
+
 def _load_asset_protection_config() -> AssetProtectionConfig:
     """Load asset protection configuration from environment variables."""
     enabled = os.getenv("ASSET_PROTECTION_ENABLED", "false").lower() in ('true', '1', 'yes', 'on')
@@ -564,7 +621,7 @@ def _load_asset_protection_config() -> AssetProtectionConfig:
     )
 
 
-def load_config() -> tuple[TradingConfig, APIConfig, DipBuyConfig, AssetProtectionConfig]:
+def load_config() -> tuple[TradingConfig, APIConfig, DipBuyConfig, AssetProtectionConfig, SentimentConfig]:
     """Load and validate configuration."""
     # Validate required environment variables
     required_vars = ["BITVAVO_API_KEY", "BITVAVO_API_SECRET"]
@@ -627,4 +684,7 @@ def load_config() -> tuple[TradingConfig, APIConfig, DipBuyConfig, AssetProtecti
     # Load asset protection configuration
     asset_protection_config = _load_asset_protection_config()
 
-    return trading_config, api_config, dip_config, asset_protection_config
+    # Load sentiment configuration
+    sentiment_config = _load_sentiment_config()
+
+    return trading_config, api_config, dip_config, asset_protection_config, sentiment_config
