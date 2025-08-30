@@ -36,17 +36,28 @@ class RedditCollector:
         """
         self.config = config
         
-        # Primary crypto subreddits (ordered by quality and activity)
+        # Primary crypto subreddits (updated 2025 - ordered by quality and activity)
+        # Tier 1: Core Communities (highest quality, most active)
         self.crypto_subreddits = [
-            'CryptoCurrency',      # 6.8M members, high quality
-            'Bitcoin',             # 5.4M members, BTC focused
-            'ethereum',            # 2.4M members, ETH focused  
-            'CryptoMarkets',       # 2.2M members, trading focused
-            'altcoin',             # 480k members, altcoin discussion
-            'CryptoMoonShots',     # 1.8M members, new coins (lower quality)
-            'SatoshiStreetBets',   # 500k members, meme coins
-            'binance',             # 800k members, exchange specific
-            'coinbase',            # 500k members, exchange specific
+            'CryptoCurrency',      # 9.9M members, highest quality discussions
+            'Bitcoin',             # 7.8M members, BTC ecosystem focus
+            'ethereum',            # 3.7M members, ETH ecosystem focus  
+            'CryptoMarkets',       # 1.7M members, trading and market analysis
+            'CryptoTechnology',    # 1.3M members, technical discussions
+            
+            # Tier 2: Ecosystem-Specific (2025 additions)
+            'solana',              # 449K members, fast-growing SOL ecosystem
+            'cardano',             # 700K members, ADA governance and development
+            'defi',                # DeFi protocols and yield farming trends
+            'web3',                # Web3 infrastructure and emerging trends
+            'altcoin',             # 226K members, general altcoin discussions
+            
+            # Tier 3: Specialized & Exchange-Specific
+            'binance',             # 800K members, CEX-specific discussions
+            'coinbase',            # 500K members, CEX-specific discussions
+            'BitcoinBeginners',    # 690K members, retail sentiment indicator
+            'avalanche',           # 57K members, AVAX ecosystem (highly engaged)
+            # Note: Removed SatoshiStreetBets (declining quality) and CryptoMoonShots (requires heavy filtering)
         ]
         
         # Initialize Reddit client
@@ -243,8 +254,15 @@ class RedditCollector:
         posts = []
         cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
         
-        # Focus on top quality subreddits for general sentiment
-        priority_subreddits = ['CryptoCurrency', 'Bitcoin', 'ethereum', 'CryptoMarkets']
+        # Focus on highest quality subreddits for general sentiment (2025 update)
+        priority_subreddits = [
+            'CryptoCurrency',      # 9.9M - Best overall quality and moderation
+            'CryptoTechnology',    # 1.3M - Technical discussions, less speculation
+            'CryptoMarkets',       # 1.7M - Trading-focused market analysis
+            'Bitcoin',             # 7.8M - BTC ecosystem sentiment
+            'ethereum',            # 3.7M - ETH ecosystem sentiment
+            'defi',                # DeFi protocol trends and sentiment
+        ]
         
         logger.info(f"Collecting general crypto sentiment from last {hours_back} hours")
         
