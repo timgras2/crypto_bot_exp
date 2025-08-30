@@ -3,7 +3,8 @@
     "allow": [
       "Bash(python -m pytest tests/ -v)",
       "Bash(git config:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git mv:*)"
     ],
     "deny": []
   }
