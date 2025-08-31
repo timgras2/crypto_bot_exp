@@ -6,7 +6,7 @@ import logging
 import threading
 import time
 from typing import Dict, List, Optional, Union
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .reddit_collector import RedditCollector
@@ -246,7 +246,7 @@ class MultiSourceDataCollector:
         
         result = {
             'symbol': symbol.upper(),
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'aggregated_sentiment': weighted_sentiment,
             'confidence': avg_confidence,
             'total_posts': total_posts,
@@ -337,7 +337,7 @@ class MultiSourceDataCollector:
         """Create empty sentiment result when no data is available."""
         return {
             'symbol': symbol.upper(),
-            'timestamp': datetime.utcnow().isoformat(),
+            'timestamp': datetime.now(timezone.utc).isoformat(),
             'aggregated_sentiment': 0.0,
             'confidence': 0.0,
             'total_posts': 0,
@@ -367,7 +367,7 @@ class MultiSourceDataCollector:
                     self.collectors['discord'].start_monitoring(symbol)
                 
                 self.active_monitoring[symbol] = {
-                    'started_at': datetime.utcnow(),
+                    'started_at': datetime.now(timezone.utc),
                     'last_collection': None
                 }
                 
@@ -403,7 +403,7 @@ class MultiSourceDataCollector:
             # Add individual symbol status
             for symbol, info in self.active_monitoring.items():
                 status[f'{symbol}_status'] = {
-                    'monitoring_duration': str(datetime.utcnow() - info['started_at']),
+                    'monitoring_duration': str(datetime.now(timezone.utc) - info['started_at']),
                     'last_collection': info.get('last_collection')
                 }
         

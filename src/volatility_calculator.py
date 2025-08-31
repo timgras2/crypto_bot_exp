@@ -10,7 +10,10 @@ from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Any
 from statistics import stdev
 
-from .requests_handler import BitvavoAPI
+try:
+    from .requests_handler import BitvavoAPI
+except ImportError:
+    from requests_handler import BitvavoAPI
 
 logger = logging.getLogger(__name__)
 

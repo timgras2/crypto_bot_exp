@@ -7,7 +7,7 @@ import logging
 import asyncio
 import threading
 from typing import List, Dict, Optional, Set
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from telethon import TelegramClient, events
 from telethon.errors import SessionPasswordNeededError, FloodWaitError
 from telethon.tl.types import Channel, Chat, User
@@ -160,7 +160,7 @@ class TelegramCollector:
             return messages
         
         try:
-            cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours_back)
             
             self._rate_limit_check()
             
@@ -351,7 +351,7 @@ class TelegramCollector:
             return []
         
         all_messages = []
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours_back)
         
         # Focus on news and general channels for sentiment
         priority_channels = [

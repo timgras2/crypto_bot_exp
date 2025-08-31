@@ -22,15 +22,23 @@ class FakeBitvavoAPI:
     def __init__(self):
         self.price = "50000.00"
         
-    def send_request(self, method, endpoint, body=None):
+    def send_request(self, method, endpoint, body=None, params=None):
         if method.upper() == "POST" and endpoint == "/order":
             # Voor buy-orders: retourneer een prijs, voor sell-orders: retourneer een orderId
-            if body.get("side") == "buy":
+            if body and body.get("side") == "buy":
                 return {"price": "50000.00"}
+            elif body and body.get("side") == "sell":
+                return {"orderId": "test_sell_order", "status": "filled"}
             else:
                 return {"orderId": "test_order"}
-        if method.upper() == "GET" and endpoint.startswith("/ticker/price"):
+        elif method.upper() == "GET" and endpoint.startswith("/ticker/price"):
             return {"price": self.price}
+        elif method.upper() == "GET" and endpoint == "/balance":
+            # Return mock balance data
+            return [
+                {"symbol": "BTC", "available": "0.1", "inOrder": "0.0"},
+                {"symbol": "EUR", "available": "1000.0", "inOrder": "0.0"}
+            ]
         return None
 
 class TestTradeLogic(unittest.TestCase):

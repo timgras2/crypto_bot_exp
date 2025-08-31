@@ -5,7 +5,7 @@ import sys
 import asyncio
 import logging
 from typing import List, Dict, Optional, Set
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import discord
 from discord.ext import commands
 import threading
@@ -177,7 +177,7 @@ class DiscordCollector:
                     self.collected_messages.append(message_data)
                     
                     # Keep only recent messages (last 24 hours)
-                    cutoff_time = datetime.utcnow() - timedelta(hours=24)
+                    cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
                     self.collected_messages = [
                         msg for msg in self.collected_messages
                         if datetime.fromisoformat(msg['timestamp']) > cutoff_time
@@ -305,7 +305,7 @@ class DiscordCollector:
         self.start_monitoring(symbol)
         
         with self.collection_lock:
-            cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours_back)
             
             relevant_messages = []
             for message in self.collected_messages:
@@ -333,7 +333,7 @@ class DiscordCollector:
             List of recent messages
         """
         with self.collection_lock:
-            cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours_back)
             
             recent_messages = []
             for message in self.collected_messages:

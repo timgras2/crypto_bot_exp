@@ -11,7 +11,10 @@ from requests import Session, RequestException
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from .config import APIConfig
+try:
+    from .config import APIConfig
+except ImportError:
+    from config import APIConfig
 
 
 class BitvavoAPI:

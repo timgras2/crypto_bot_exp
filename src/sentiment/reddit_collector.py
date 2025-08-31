@@ -5,7 +5,7 @@ import sys
 import time
 import logging
 from typing import List, Dict, Optional, Set
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import praw
 from prawcore.exceptions import TooManyRequests, RequestException
 
@@ -125,7 +125,7 @@ class RedditCollector:
             return []
         
         posts = []
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours_back)
         
         # Search queries for the symbol
         search_queries = [
@@ -156,7 +156,7 @@ class RedditCollector:
                         )
                         
                         for post in search_results:
-                            post_time = datetime.utcfromtimestamp(post.created_utc)
+                            post_time = datetime.fromtimestamp(post.created_utc, timezone.utc)
                             
                             # Only include recent posts
                             if post_time < cutoff_time:
@@ -193,7 +193,7 @@ class RedditCollector:
                     hot_posts = subreddit.hot(limit=25)
                     
                     for post in hot_posts:
-                        post_time = datetime.utcfromtimestamp(post.created_utc)
+                        post_time = datetime.fromtimestamp(post.created_utc, timezone.utc)
                         
                         if post_time < cutoff_time:
                             continue
@@ -252,7 +252,7 @@ class RedditCollector:
             return []
         
         posts = []
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=hours_back)
         
         # Focus on highest quality subreddits for general sentiment (2025 update)
         priority_subreddits = [
@@ -275,7 +275,7 @@ class RedditCollector:
                 recent_posts = subreddit.new(limit=50)
                 
                 for post in recent_posts:
-                    post_time = datetime.utcfromtimestamp(post.created_utc)
+                    post_time = datetime.fromtimestamp(post.created_utc, timezone.utc)
                     
                     if post_time < cutoff_time:
                         continue
@@ -366,7 +366,7 @@ class RedditCollector:
                     'subscribers': subreddit.subscribers,
                     'active_users': subreddit.active_user_count,
                     'description': subreddit.public_description[:100] + "..." if len(subreddit.public_description) > 100 else subreddit.public_description,
-                    'created': datetime.utcfromtimestamp(subreddit.created_utc).isoformat()
+                    'created': datetime.fromtimestamp(subreddit.created_utc, timezone.utc).isoformat()
                 }
                 
             except Exception as e:

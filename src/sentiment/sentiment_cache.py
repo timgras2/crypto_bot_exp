@@ -7,7 +7,7 @@ import json
 import time
 import logging
 from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import hashlib
 import threading
@@ -101,14 +101,14 @@ class SentimentCache:
                 
                 # Add timestamp if not present
                 if 'timestamp' not in sentiment_data:
-                    sentiment_data['timestamp'] = datetime.utcnow().isoformat()
+                    sentiment_data['timestamp'] = datetime.now(timezone.utc).isoformat()
                 
                 # Add to cache
                 if 'sentiment_results' not in existing_data:
                     existing_data['sentiment_results'] = []
                 
                 existing_data['sentiment_results'].append(sentiment_data)
-                existing_data['last_updated'] = datetime.utcnow().isoformat()
+                existing_data['last_updated'] = datetime.now(timezone.utc).isoformat()
                 existing_data['symbol'] = symbol.upper()
                 
                 # Clean old data
@@ -151,13 +151,13 @@ class SentimentCache:
                     
                     if post_hash not in existing_hashes:
                         post['hash'] = post_hash
-                        post['cached_at'] = datetime.utcnow().isoformat()
+                        post['cached_at'] = datetime.now(timezone.utc).isoformat()
                         existing_data['raw_posts'].append(post)
                         existing_hashes.add(post_hash)
                         new_posts_added += 1
                 
                 if new_posts_added > 0:
-                    existing_data['last_updated'] = datetime.utcnow().isoformat()
+                    existing_data['last_updated'] = datetime.now(timezone.utc).isoformat()
                     existing_data['symbol'] = symbol.upper()
                     
                     # Clean old data
@@ -232,7 +232,7 @@ class SentimentCache:
                 
                 # Filter by age if specified
                 if max_age_hours:
-                    cutoff_time = datetime.utcnow() - timedelta(hours=max_age_hours)
+                    cutoff_time = datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
                     fresh_posts = []
                     
                     for post in data['raw_posts']:
@@ -397,7 +397,7 @@ class SentimentCache:
         Returns:
             Cleaned data dictionary
         """
-        cutoff_time = datetime.utcnow() - timedelta(hours=self.max_age_hours)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=self.max_age_hours)
         
         # Clean raw posts
         if 'raw_posts' in data:
@@ -441,7 +441,7 @@ class SentimentCache:
         """
         try:
             data_time = datetime.fromisoformat(data.get('timestamp', ''))
-            cutoff_time = datetime.utcnow() - timedelta(hours=self.max_age_hours)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=self.max_age_hours)
             return data_time >= cutoff_time
         except Exception:
             return False

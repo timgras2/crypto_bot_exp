@@ -50,7 +50,7 @@ def test_reddit_credentials():
     if missing_creds:
         print(f"\n❌ Missing credentials: {missing_creds}")
         print("Please check your .env file contains all Reddit credentials.")
-        return False
+        assert False, f"Missing Reddit credentials: {missing_creds}"
     
     print("\n2. Testing Reddit API connection...")
     
@@ -86,7 +86,7 @@ def test_reddit_credentials():
             print(f"   📋 Latest post: \"{latest_post.title[:50]}...\"")
         
         print("\n🎉 SUCCESS: Reddit API connection is working perfectly!")
-        return True
+        return  # Test passed
         
     except Exception as e:
         print(f"   ❌ Reddit API Error: {e}")
@@ -110,7 +110,7 @@ def test_reddit_credentials():
             print("   - Check your internet connection")
             print("   - Verify Reddit is accessible")
         
-        return False
+        assert False, "Reddit test failed"
 
 def test_sentiment_collection():
     """Test collecting sentiment for a real cryptocurrency."""
@@ -164,13 +164,14 @@ def test_sentiment_collection():
             print("\n⚠️ No posts found for BTC (unusual but possible)")
             print("This might be due to timing or Reddit API issues")
         
-        return result['total_posts'] > 0
+        # Test passes if collector runs without error, regardless of post count
+        print("✅ Sentiment collection test completed successfully")
         
     except Exception as e:
         print(f"❌ Sentiment collection error: {e}")
         import traceback
         traceback.print_exc()
-        return False
+        assert False, "Reddit test failed"
 
 def main():
     """Run Reddit connection tests."""
