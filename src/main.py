@@ -1,7 +1,18 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import logging
 import signal
+import sys
 import time
 from pathlib import Path
+
+# Fix Unicode encoding on Windows
+if sys.platform.startswith('win'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except (AttributeError, OSError):
+        pass
 
 from .config import load_config
 from .requests_handler import BitvavoAPI
@@ -108,6 +119,18 @@ class TradingBot:
         print(f"🔄 Checking every {self.trading_config.check_interval} seconds")
         print(f"📈 Stop loss: {self.trading_config.min_profit_pct}% | Trailing stop: {self.trading_config.trailing_pct}%")
         
+        # Show profit optimization features status
+        print("🎯 PROFIT OPTIMIZATION:")
+        if self.trading_config.tiered_trailing_enabled:
+            print(f"   📊 Two-tier trailing: ENABLED ({self.trading_config.trailing_pct}% → {self.trading_config.tiered_trailing_tight_pct}% after {self.trading_config.tiered_trailing_hours}h)")
+        else:
+            print(f"   📊 Two-tier trailing: DISABLED")
+            
+        if self.trading_config.partial_profit_enabled:
+            print(f"   💎 Partial profit: ENABLED ({self.trading_config.partial_profit_amount_pct}% at +{self.trading_config.partial_profit_threshold_pct}%)")
+        else:
+            print(f"   💎 Partial profit: DISABLED")
+        
         # Show dip buying status
         if self.dip_config.enabled:
             print(f"🎯 Dip buying: ENABLED")
@@ -132,8 +155,16 @@ class TradingBot:
                 # Show periodic status
                 if scan_count % 6 == 1:  # Every minute (6 scans at 10sec intervals)
                     active_trades = len(self.trade_manager.active_trades)
-                    if active_trades > 0:
-                        print(f"🕐 {current_time} | ✅ Bot running | 📊 {active_trades} active trades | Scan #{scan_count}")
+                    dip_monitored = 0
+                    if self.dip_manager:
+                        try:
+                            dip_status = self.dip_manager.state_manager.get_active_tracking()
+                            dip_monitored = len(dip_status)
+                        except:
+                            dip_monitored = 0
+                    
+                    if active_trades > 0 or dip_monitored > 0:
+                        print(f"🕐 {current_time} | ✅ Bot running | 📊 {active_trades} active trades | 🎯 {dip_monitored} dip monitored | Scan #{scan_count}")
                     else:
                         print(f"🕐 {current_time} | ✅ Bot running | 👀 Scanning for new listings... | Scan #{scan_count}")
                 

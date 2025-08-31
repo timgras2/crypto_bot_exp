@@ -35,12 +35,12 @@ class DipStateManager:
         for attempt in range(3):  # Retry up to 3 times
             try:
                 if not self.persistence_file.exists():
-                    logger.info(f"No dip tracking file found at {self.persistence_file} - starting fresh")
+                    logger.debug(f"No dip tracking file found at {self.persistence_file} - starting fresh")
                     return {}
                 
                 with self._lock:
                     state_data = json.loads(self.persistence_file.read_text(encoding='utf-8'))
-                    logger.info(f"Loaded dip tracking state for {len(state_data)} assets")
+                    logger.debug(f"Loaded dip tracking state for {len(state_data)} assets")
                     return state_data
                     
             except (FileNotFoundError, PermissionError) as e:

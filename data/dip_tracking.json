@@ -1,0 +1,22 @@
+{
+  "ADA-EUR": {
+    "sell_price": "0.7986",
+    "sell_timestamp": "2025-08-14T14:33:28.840883",
+    "trigger_reason": "trailing_stop",
+    "monitoring_expires": "2025-08-16T14:33:28.840883",
+    "completed_rebuys": [],
+    "levels": {},
+    "next_asset_cooldown": null,
+    "created_at": "2025-08-14T14:33:28.844485"
+  },
+  "UNI-EUR": {
+    "sell_price": "9.5781",
+    "sell_timestamp": "2025-08-14T14:33:29.863425",
+    "trigger_reason": "trailing_stop",
+    "monitoring_expires": "2025-08-16T14:33:29.863425",
+    "completed_rebuys": [],
+    "levels": {},
+    "next_asset_cooldown": null,
+    "created_at": "2025-08-14T14:33:29.863897"
+  }
+}

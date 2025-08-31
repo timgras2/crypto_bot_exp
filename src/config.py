@@ -17,6 +17,14 @@ class TradingConfig:
     max_retries: int
     retry_delay: int  # seconds
     operator_id: int  # Required by Bitvavo API for order identification
+    
+    # Enhanced profit optimization features
+    tiered_trailing_enabled: bool = False  # Enable two-tier trailing stop
+    tiered_trailing_hours: int = 48       # Hours before tightening trailing stop
+    tiered_trailing_tight_pct: Decimal = Decimal('2.0')  # Tighter trailing percentage
+    partial_profit_enabled: bool = False  # Enable partial profit taking
+    partial_profit_threshold_pct: Decimal = Decimal('25.0')  # Profit level to trigger partial sale
+    partial_profit_amount_pct: Decimal = Decimal('30.0')     # Percentage of position to sell
 
 
 @dataclass
@@ -45,6 +53,10 @@ class DipBuyConfig:
     cooldown_hours: int = 4                  # Cooldown between rebuys per asset
     max_rebuys_per_asset: int = 3           # Maximum rebuy attempts per asset
     use_market_filter: bool = False         # Enable BTC trend filtering
+    
+    # Safety filters for slippage and liquidity protection
+    max_slippage_pct: Decimal = Decimal('0.5')      # Max allowed slippage percentage
+    min_24h_volume_usd: Decimal = Decimal('500000') # Min $500K daily volume required
     
     # Default dip levels: 40% at -10%, 35% at -20%, 25% at -35%
     dip_levels: List[DipLevel] = field(default_factory=lambda: [
@@ -155,6 +167,12 @@ def _load_dip_config() -> DipBuyConfig:
             os.getenv("DIP_MAX_REBUYS_PER_ASSET", "3"), "DIP_MAX_REBUYS_PER_ASSET", 1, 10
         ),
         use_market_filter=os.getenv("DIP_USE_MARKET_FILTER", "false").lower() in ('true', '1', 'yes', 'on'),
+        max_slippage_pct=_validate_decimal_range(
+            os.getenv("DIP_MAX_SLIPPAGE_PCT", "0.5"), "DIP_MAX_SLIPPAGE_PCT", 0.1, 5.0
+        ),
+        min_24h_volume_usd=_validate_decimal_range(
+            os.getenv("DIP_MIN_24H_VOLUME_USD", "500000"), "DIP_MIN_24H_VOLUME_USD", 10000.0, 100000000.0
+        ),
         dip_levels=_parse_dip_levels(os.getenv("DIP_LEVELS", ""))
     )
 
@@ -195,6 +213,22 @@ def load_config() -> tuple[TradingConfig, APIConfig, DipBuyConfig]:
         ),
         operator_id=_validate_int_range(
             os.getenv("OPERATOR_ID", "1001"), "OPERATOR_ID", 1, 2147483647
+        ),
+        
+        # Enhanced profit optimization features
+        tiered_trailing_enabled=os.getenv("TIERED_TRAILING_ENABLED", "false").lower() in ('true', '1', 'yes', 'on'),
+        tiered_trailing_hours=_validate_int_range(
+            os.getenv("TIERED_TRAILING_HOURS", "48"), "TIERED_TRAILING_HOURS", 1, 168
+        ),
+        tiered_trailing_tight_pct=_validate_decimal_range(
+            os.getenv("TIERED_TRAILING_TIGHT_PCT", "2.0"), "TIERED_TRAILING_TIGHT_PCT", 0.1, 10.0
+        ),
+        partial_profit_enabled=os.getenv("PARTIAL_PROFIT_ENABLED", "false").lower() in ('true', '1', 'yes', 'on'),
+        partial_profit_threshold_pct=_validate_decimal_range(
+            os.getenv("PARTIAL_PROFIT_THRESHOLD_PCT", "25.0"), "PARTIAL_PROFIT_THRESHOLD_PCT", 5.0, 100.0
+        ),
+        partial_profit_amount_pct=_validate_decimal_range(
+            os.getenv("PARTIAL_PROFIT_AMOUNT_PCT", "30.0"), "PARTIAL_PROFIT_AMOUNT_PCT", 10.0, 80.0
         )
     )
 
