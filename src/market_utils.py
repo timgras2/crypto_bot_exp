@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from typing import List, Tuple
 
-from requests_handler import BitvavoAPI
+from .requests_handler import BitvavoAPI
 
 
 class MarketTracker:

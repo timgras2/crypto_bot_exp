@@ -11,8 +11,8 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 from decimal import Decimal, InvalidOperation
 
-from future_work.dip_evaluator import AssetSaleInfo
-from src.config import DipBuyConfig
+from .dip_evaluator import AssetSaleInfo
+from ..config import DipBuyConfig
 
 logger = logging.getLogger(__name__)
 

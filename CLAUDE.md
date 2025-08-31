@@ -10,26 +10,19 @@ This is a clean cryptocurrency trading bot project targeting the Bitvavo exchang
 
 ```
 crypto_bot_main/
-├── src/                       # Main source code
+├── src/                       # Core source code
+│   ├── strategies/           # Advanced trading strategies
+│   │   ├── __init__.py      # Package initialization
+│   │   ├── dip_buy_manager.py  # Main orchestration for dip buying
+│   │   ├── dip_evaluator.py    # Decision engine for rebuy opportunities
+│   │   ├── dip_state.py        # Thread-safe state persistence
+│   │   └── market_filter.py    # Market condition filtering
 │   ├── __init__.py           # Package initialization
 │   ├── main.py               # Entry point with TradingBot class
 │   ├── config.py             # Configuration management with validation
 │   ├── requests_handler.py   # BitvavoAPI wrapper with rate limiting
 │   ├── market_utils.py       # MarketTracker for new listings detection
-│   ├── trade_logic.py        # TradeManager for execution and monitoring
-│   └── crypto_bot.egg-info/  # Package metadata (auto-generated)
-├── simulator/                # Trading strategy simulator
-│   ├── __init__.py          # Package initialization
-│   ├── simulation_engine.py # Core simulation engine
-│   ├── mock_api.py          # Mock Bitvavo API with historical data
-│   ├── results_analyzer.py  # Analysis and reporting tools
-│   ├── data/               # Historical price data
-│   └── results/            # Simulation results and analysis
-├── future_work/             # Advanced features (dip buying strategy)
-│   ├── dip_buy_manager.py  # Main orchestration for dip buying
-│   ├── dip_evaluator.py    # Decision engine for rebuy opportunities
-│   ├── dip_state.py        # Thread-safe state persistence
-│   └── market_filter.py    # Market condition filtering
+│   └── trade_logic.py        # TradeManager for execution and monitoring
 ├── tests/                    # Comprehensive unit tests
 │   ├── __init__.py
 │   ├── conftest.py          # pytest configuration and fixtures
@@ -37,33 +30,47 @@ crypto_bot_main/
 │   ├── test_market_utils.py # Market tracking tests
 │   ├── test_requests_handler.py # API wrapper tests
 │   └── test_trade_logic.py  # Trade execution and monitoring tests
-├── data/                    # Data persistence directory
-│   ├── README.md           # Data directory documentation
-│   ├── previous_markets.json # Historical market listings
-│   └── active_trades.json  # Active trade state (auto-managed)
-├── logs/                   # Logging directory
-│   ├── README.md          # Logging documentation
-│   └── trading.log        # Bot activity logs (auto-generated)
-├── future_work/           # V3 features for future implementation
+├── simulator/                # Trading strategy simulator
+│   ├── __init__.py          # Package initialization
+│   ├── simulation_engine.py # Core simulation engine
+│   ├── mock_api.py          # Mock Bitvavo API with historical data
+│   ├── results_analyzer.py  # Analysis and reporting tools
+│   ├── data/               # Historical price data
+│   └── results/            # Simulation results and analysis
+├── scripts/                  # Utility scripts and launchers
+│   ├── start_bot.py         # Convenient launcher script
+│   ├── start_bot.bat        # Windows batch launcher
+│   ├── start_bot.sh         # Unix shell launcher
+│   ├── run_simulation.py    # Trading strategy simulator launcher
+│   ├── review_trades.py     # Trade analysis tools
+│   ├── review_trades.bat    # Windows trade review launcher
+│   ├── sell_small_holdings.py # Portfolio cleanup utility
+│   ├── test_simulator.py    # Comprehensive simulator tests
+│   └── test_simulator_simple.py # Simple simulator tests
+├── tools/                    # Portfolio management tools
+│   ├── __init__.py          # Package initialization
 │   └── bitvavo_interface.py # Portfolio tracking functionality
-├── requirements.txt       # Python dependencies
-├── setup.py              # Package setup configuration
-├── pytest.ini           # pytest configuration
-├── start_bot.py         # Convenient launcher script
-├── start_bot.bat        # Windows batch launcher
-├── start_bot.sh         # Unix shell launcher
-├── run_simulation.py    # Trading strategy simulator launcher
-├── test_simulator.py    # Comprehensive simulator tests
-├── .env.example         # Environment variables template
-├── CLAUDE.md           # This file - main development guide
-├── CLAUDE_DIP_BUY.md   # Comprehensive dip buying strategy guide
-├── CLAUDE_SIMULATOR.md # Detailed simulator documentation
-├── QUICKSTART.md       # Quick setup guide
-├── SAFETY_CHECKLIST.md # Pre-trading safety checks
-├── FIRST_RUN_BEHAVIOR.md # First run documentation
-├── BITVAVO_API_UPDATE.md # API changes documentation
-└── TERMINAL_OUTPUT_EXAMPLE.md # Example bot output
+├── docs/                     # Documentation
+│   ├── CLAUDE_DIP_BUY.md    # Comprehensive dip buying strategy guide
+│   ├── CLAUDE_SIMULATOR.md  # Detailed simulator documentation
+│   ├── DIP_BUY_IMPLEMENTATION.md # Dip buying implementation guide
+│   ├── DOCUMENTATION_INDEX.md    # Documentation overview
+│   ├── GIT_WORKFLOW.md      # Git workflow documentation
+│   ├── SIMULATOR_ARCHITECTURE.md # Simulator architecture
+│   ├── SIMULATOR_README.md  # Simulator usage guide
+│   ├── BITVAVO_API_UPDATE.md # API changes documentation
+│   ├── FIRST_RUN_BEHAVIOR.md # First run documentation
+│   ├── QUICKSTART.md        # Quick setup guide
+│   ├── SAFETY_CHECKLIST.md  # Pre-trading safety checks
+│   └── TERMINAL_OUTPUT_EXAMPLE.md # Example bot output
+├── requirements.txt         # Python dependencies
+├── setup.py                # Package setup configuration
+├── pytest.ini             # pytest configuration
+├── .env.example           # Environment variables template
+└── CLAUDE.md             # This file - main development guide
 ```
+
+**Note**: Runtime directories (`data/`, `logs/`) are auto-created by the bot when needed.
 
 ## Architecture
 
@@ -117,25 +124,25 @@ cp .env.example .env
 python src/main.py
 
 # Or use the launcher script (recommended)
-python start_bot.py
+python scripts/start_bot.py
 
 # Windows batch file
-start_bot.bat
+scripts/start_bot.bat
 
 # Unix shell script  
-./start_bot.sh
+./scripts/start_bot.sh
 ```
 
 ### Running the Simulator
 ```bash
 # Interactive simulator with strategy testing
-python run_simulation.py
+python scripts/run_simulation.py
 
 # Quick simulator tests
-python test_simulator.py
+python scripts/test_simulator.py
 
 # Simple functionality test  
-python test_simulator_simple.py
+python scripts/test_simulator_simple.py
 ```
 
 ### Testing
@@ -202,7 +209,7 @@ The bot uses threading for concurrent operations:
 - **Comprehensive Logging**: Detailed activity logs for debugging and monitoring
 - **Input Validation**: Extensive validation of all trading parameters and market names
 
-### Advanced Features (Optional)
+### Advanced Features (Available)
 - **Dip Buying Strategy**: Automatically rebuy assets after profitable sales when price drops
 - **Multi-Level Dip Tracking**: Configure multiple price thresholds with different capital allocations
 - **Market Condition Filtering**: Optional BTC trend analysis to gate rebuy decisions
@@ -312,11 +319,23 @@ The simulator and test files have been updated with these fixes. Use them as tem
 - Simulator tests for strategy validation
 - Error injection tests for robustness
 
-## Future Work
+## Available Tools and Strategies
 
-The `future_work/` directory contains:
-- **Advanced dip buying strategy** (production-ready)
+The project includes several advanced components:
+
+### Advanced Strategies (`src/strategies/`)
+- **Dip buying strategy** - Production-ready multi-level rebuy system
+- **Market condition filtering** - BTC trend analysis for rebuy decisions
+- **Thread-safe state management** - Robust persistence and recovery
+
+### Portfolio Tools (`tools/`)
 - **Portfolio tracking functionality** (`bitvavo_interface.py`) for enhanced management
 - **Market analysis tools** for strategy optimization
 
-All future work follows the same quality standards with comprehensive error handling, input validation, and thread safety.
+### Utility Scripts (`scripts/`)
+- **Bot launchers** - Multiple ways to start the trading bot
+- **Trade analysis** - Review and analyze trading performance  
+- **Portfolio cleanup** - Sell small holdings utility
+- **Simulator tools** - Test strategies with historical data
+
+All components follow the same quality standards with comprehensive error handling, input validation, and thread safety.
