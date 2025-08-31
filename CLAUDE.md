@@ -22,19 +22,13 @@ crypto_bot_main/
 │   ├── volatility_calculator.py    # Dynamic volatility-based risk management
 │   ├── protected_asset_state.py    # Thread-safe asset protection state
 │   ├── circuit_breaker.py          # System stability protection
+│   ├── strategies/           # Advanced trading strategies
+│   │   ├── __init__.py      # Package initialization
+│   │   ├── dip_buy_manager.py  # Main orchestration for dip buying
+│   │   ├── dip_evaluator.py    # Decision engine for rebuy opportunities
+│   │   ├── dip_state.py        # Thread-safe state persistence
+│   │   └── market_filter.py    # Market condition filtering
 │   └── crypto_bot.egg-info/  # Package metadata (auto-generated)
-├── simulator/                # Trading strategy simulator
-│   ├── __init__.py          # Package initialization
-│   ├── simulation_engine.py # Core simulation engine
-│   ├── mock_api.py          # Mock Bitvavo API with historical data
-│   ├── results_analyzer.py  # Analysis and reporting tools
-│   ├── data/               # Historical price data
-│   └── results/            # Simulation results and analysis
-├── future_work/             # Advanced features (dip buying strategy)
-│   ├── dip_buy_manager.py  # Main orchestration for dip buying
-│   ├── dip_evaluator.py    # Decision engine for rebuy opportunities
-│   ├── dip_state.py        # Thread-safe state persistence
-│   └── market_filter.py    # Market condition filtering
 ├── tests/                    # Comprehensive unit tests
 │   ├── __init__.py
 │   ├── conftest.py          # pytest configuration and fixtures
@@ -43,35 +37,39 @@ crypto_bot_main/
 │   ├── test_requests_handler.py # API wrapper tests
 │   ├── test_trade_logic.py  # Trade execution and monitoring tests
 │   ├── test_asset_protection.py # Asset protection unit tests (44 tests)
-│   └── test_asset_protection_integration.py # Asset protection integration tests (11 tests)
-├── data/                    # Data persistence directory
-│   ├── README.md           # Data directory documentation
-│   ├── previous_markets.json # Historical market listings
-│   └── active_trades.json  # Active trade state (auto-managed)
-├── logs/                   # Logging directory
-│   ├── README.md          # Logging documentation
-│   └── trading.log        # Bot activity logs (auto-generated)
-├── future_work/           # V3 features for future implementation
+│   ├── test_asset_protection_integration.py # Asset protection integration tests (11 tests)
+│   └── test_asset_protection_upgrades.py # Asset protection upgrade tests
+├── simulator/                # Trading strategy simulator
+│   ├── __init__.py          # Package initialization
+│   ├── simulation_engine.py # Core simulation engine
+│   ├── mock_api.py          # Mock Bitvavo API with historical data
+│   ├── results_analyzer.py  # Analysis and reporting tools
+│   ├── swing_trading_simulator.py # Swing trading simulation
+│   ├── data/               # Historical price data
+│   └── results/            # Simulation results and analysis
+├── scripts/                  # Utility scripts and launchers
+│   ├── start_bot.py         # Convenient launcher script
+│   ├── start_bot.bat        # Windows batch launcher
+│   ├── start_bot.sh         # Unix shell launcher
+│   ├── run_simulation.py    # Trading strategy simulator launcher
+│   ├── review_trades.py     # Trade analysis tools
+│   └── sell_small_holdings.py # Portfolio cleanup utility
+├── tools/                    # Portfolio management tools
+│   ├── __init__.py          # Package initialization
 │   └── bitvavo_interface.py # Portfolio tracking functionality
-├── requirements.txt       # Python dependencies
-├── setup.py              # Package setup configuration
-├── pytest.ini           # pytest configuration
-├── start_bot.py         # Convenient launcher script
-├── start_bot.bat        # Windows batch launcher
-├── start_bot.sh         # Unix shell launcher
-├── run_simulation.py    # Trading strategy simulator launcher
-├── test_simulator.py    # Comprehensive simulator tests
-├── .env.example         # Environment variables template
-├── CLAUDE.md           # This file - main development guide
-├── CLAUDE_DIP_BUY.md   # Comprehensive dip buying strategy guide
-├── CLAUDE_ASSET_PROTECTION.md # Asset protection strategy guide
-├── CLAUDE_SIMULATOR.md # Detailed simulator documentation
-├── QUICKSTART.md       # Quick setup guide
-├── SAFETY_CHECKLIST.md # Pre-trading safety checks
-├── FIRST_RUN_BEHAVIOR.md # First run documentation
-├── BITVAVO_API_UPDATE.md # API changes documentation
-└── TERMINAL_OUTPUT_EXAMPLE.md # Example bot output
+├── docs/                     # Documentation
+│   ├── ASSET_PROTECTION_UPGRADE_GUIDE.md # Asset protection v3.0 guide
+│   ├── DOCUMENTATION_INDEX.md            # Documentation overview
+│   ├── DYNAMIC_REBUY_IMPLEMENTATION_GUIDE.md # Rebuy strategy guide
+│   └── UPGRADE_SIMULATION_RESULTS.md     # Simulation results
+├── requirements.txt         # Python dependencies
+├── setup.py                # Package setup configuration
+├── pytest.ini             # pytest configuration
+├── .env.example           # Environment variables template
+└── CLAUDE.md             # This file - main development guide
 ```
+
+**Note**: Runtime directories (`data/`, `logs/`) are auto-created by the bot when needed.
 
 ## Architecture
 
@@ -179,28 +177,22 @@ cp .env.example .env
 python src/main.py
 
 # Or use the launcher script (recommended)
-python start_bot.py
+python scripts/start_bot.py
 
 # Windows batch file
-start_bot.bat
+scripts/start_bot.bat
 
 # Unix shell script  
-./start_bot.sh
+./scripts/start_bot.sh
 ```
 
 ### Running the Simulator
 ```bash
 # Interactive simulator with strategy testing
-python run_simulation.py
-
-# Quick simulator tests
-python test_simulator.py
-
-# Simple functionality test  
-python test_simulator_simple.py
+python scripts/run_simulation.py
 
 # Test Asset Protection Upgrades (v3.0 features)
-python test_asset_protection_upgrades.py
+python tests/test_asset_protection_upgrades.py
 ```
 
 ### Testing

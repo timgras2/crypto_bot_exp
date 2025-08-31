@@ -13,9 +13,9 @@ from typing import Optional, Dict, Any
 
 from src.config import DipBuyConfig, TradingConfig
 from src.requests_handler import BitvavoAPI
-from future_work.dip_evaluator import DipEvaluator, AssetSaleInfo, RebuyDecision
-from future_work.dip_state import DipStateManager
-from future_work.market_filter import MarketFilter
+from src.strategies.dip_evaluator import DipEvaluator, AssetSaleInfo, RebuyDecision
+from src.strategies.dip_state import DipStateManager
+from src.strategies.market_filter import MarketFilter
 
 logger = logging.getLogger(__name__)
 
