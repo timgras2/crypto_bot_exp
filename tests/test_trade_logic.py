@@ -2,8 +2,14 @@ import unittest
 import time
 import logging
 from decimal import Decimal
-from trade_logic import TradeManager
-from config import TradingConfig
+import sys
+from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from src.trade_logic import TradeManager
+from src.config import TradingConfig
 
 # Configure logging voor de tests
 logging.basicConfig(

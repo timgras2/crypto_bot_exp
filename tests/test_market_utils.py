@@ -2,7 +2,12 @@ import unittest
 from pathlib import Path
 import json
 import os
-from market_utils import MarketTracker
+import sys
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from src.market_utils import MarketTracker
 
 # A fake API class to simulate /markets response.
 class FakeBitvavoAPI:

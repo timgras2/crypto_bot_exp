@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Crypto Trading Bot Launcher
 Simple script to start the bot with proper error handling and logging setup.
@@ -8,16 +9,23 @@ import sys
 import os
 from pathlib import Path
 
+# Fix Unicode encoding on Windows
+if sys.platform.startswith('win'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except (AttributeError, OSError):
+        pass
+
 def main():
     """Launch the crypto trading bot with safety checks."""
     
-    # Add src directory to path
-    src_path = Path(__file__).parent / "src"
-    if str(src_path) not in sys.path:
-        sys.path.insert(0, str(src_path))
+    # Add parent directory to path (scripts are now in scripts/)
+    parent_path = Path(__file__).parent.parent
+    if str(parent_path) not in sys.path:
+        sys.path.insert(0, str(parent_path))
     
     # Check if .env file exists
-    env_file = Path(__file__).parent / ".env"
+    env_file = Path(__file__).parent.parent / ".env"
     if not env_file.exists():
         print("❌ ERROR: .env file not found!")
         print("Please copy .env.example to .env and configure your API credentials")
@@ -25,7 +33,7 @@ def main():
         return 1
     
     # Check if logs directory exists, create if not
-    logs_dir = Path(__file__).parent / "logs"
+    logs_dir = Path(__file__).parent.parent / "logs"
     logs_dir.mkdir(exist_ok=True)
     
     print("🚀 Starting Crypto Trading Bot...")
@@ -36,7 +44,7 @@ def main():
     
     try:
         # Import and run the main bot
-        from main import main as run_bot
+        from src.main import main as run_bot
         run_bot()
         
     except KeyboardInterrupt:

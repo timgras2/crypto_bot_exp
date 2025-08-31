@@ -19,9 +19,8 @@ if sys.platform.startswith('win'):
         # Fallback for older Python versions or restricted environments
         pass
 
-# Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent / "src"))
-sys.path.insert(0, str(Path(__file__).parent))
+# Add parent directory to path for imports (scripts are now in scripts/)
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from simulator.simulation_engine import SimulationEngine, SimulationConfig
 from src.config import DipLevel

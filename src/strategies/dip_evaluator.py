@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
 
-from src.config import DipBuyConfig, DipLevel
+from ..config import DipBuyConfig, DipLevel
 
 logger = logging.getLogger(__name__)
 

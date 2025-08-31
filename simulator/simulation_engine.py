@@ -16,9 +16,9 @@ from dataclasses import dataclass, asdict
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.config import TradingConfig, DipBuyConfig, DipLevel
-from future_work.dip_buy_manager import DipBuyManager
-from future_work.dip_evaluator import AssetSaleInfo
-from simulator.mock_api import MockBitvavoAPI
+from src.strategies.dip_buy_manager import DipBuyManager
+from src.strategies.dip_evaluator import AssetSaleInfo
+from .mock_api import MockBitvavoAPI
 
 logger = logging.getLogger(__name__)
 

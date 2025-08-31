@@ -10,7 +10,21 @@ This is a clean cryptocurrency trading bot project targeting the Bitvavo exchang
 
 ```
 crypto_bot_main/
-├── src/                       # Main source code
+├── src/                       # Core source code
+│   ├── strategies/           # Advanced trading strategies  
+│   │   ├── __init__.py      # Package initialization
+│   │   ├── dip_buy_manager.py  # Main orchestration for dip buying
+│   │   ├── dip_evaluator.py    # Decision engine for rebuy opportunities
+│   │   ├── dip_state.py        # Thread-safe state persistence
+│   │   └── market_filter.py    # Market condition filtering
+│   ├── sentiment/            # Social media sentiment analysis
+│   │   ├── __init__.py      # Sentiment package initialization
+│   │   ├── sentiment_analyzer.py # VADER-based crypto sentiment analysis
+│   │   ├── data_collector.py     # Multi-source social media data coordinator
+│   │   ├── reddit_collector.py   # Reddit API data collection
+│   │   ├── discord_collector.py  # Discord monitoring (optional)
+│   │   ├── telegram_collector.py # Telegram monitoring (optional)
+│   │   └── sentiment_cache.py    # Caching and deduplication system
 │   ├── __init__.py           # Package initialization
 │   ├── main.py               # Entry point with TradingBot class
 │   ├── config.py             # Configuration management with validation
@@ -21,27 +35,7 @@ crypto_bot_main/
 │   ├── enhanced_asset_protection.py # Enhanced trailing profit and dynamic buybacks
 │   ├── volatility_calculator.py    # Dynamic volatility-based risk management
 │   ├── protected_asset_state.py    # Thread-safe asset protection state
-│   ├── circuit_breaker.py          # System stability protection
-│   ├── sentiment/            # Social media sentiment analysis
-│   │   ├── __init__.py      # Sentiment package initialization
-│   │   ├── sentiment_analyzer.py # VADER-based crypto sentiment analysis
-│   │   ├── data_collector.py     # Multi-source social media data coordinator
-│   │   ├── reddit_collector.py   # Reddit API data collection
-│   │   ├── discord_collector.py  # Discord monitoring (optional)
-│   │   └── sentiment_cache.py    # Caching and deduplication system
-│   └── crypto_bot.egg-info/  # Package metadata (auto-generated)
-├── simulator/                # Trading strategy simulator
-│   ├── __init__.py          # Package initialization
-│   ├── simulation_engine.py # Core simulation engine
-│   ├── mock_api.py          # Mock Bitvavo API with historical data
-│   ├── results_analyzer.py  # Analysis and reporting tools
-│   ├── data/               # Historical price data
-│   └── results/            # Simulation results and analysis
-├── future_work/             # Advanced features (dip buying strategy)
-│   ├── dip_buy_manager.py  # Main orchestration for dip buying
-│   ├── dip_evaluator.py    # Decision engine for rebuy opportunities
-│   ├── dip_state.py        # Thread-safe state persistence
-│   └── market_filter.py    # Market condition filtering
+│   └── circuit_breaker.py          # System stability protection
 ├── tests/                    # Comprehensive unit tests
 │   ├── __init__.py
 │   ├── conftest.py          # pytest configuration and fixtures
@@ -50,45 +44,59 @@ crypto_bot_main/
 │   ├── test_requests_handler.py # API wrapper tests
 │   ├── test_trade_logic.py  # Trade execution and monitoring tests
 │   ├── test_asset_protection.py # Asset protection unit tests (44 tests)
-│   └── test_asset_protection_integration.py # Asset protection integration tests (11 tests)
-├── data/                    # Data persistence directory
-│   ├── README.md           # Data directory documentation
-│   ├── previous_markets.json # Historical market listings
-│   ├── active_trades.json  # Active trade state (auto-managed)
-│   ├── sentiment_cache/    # Sentiment analysis cache
-│   │   └── btc_sentiment.json # Cached sentiment data per asset
-│   └── test_sentiment_cache/ # Test sentiment cache directory
-├── logs/                   # Logging directory
-│   ├── README.md          # Logging documentation
-│   └── trading.log        # Bot activity logs (auto-generated)
-├── future_work/           # V3 features for future implementation
-│   └── bitvavo_interface.py # Portfolio tracking functionality
-├── requirements.txt       # Python dependencies
-├── setup.py              # Package setup configuration
-├── pytest.ini           # pytest configuration
-├── start_bot.py         # Convenient launcher script
-├── start_bot.bat        # Windows batch launcher
-├── start_bot.sh         # Unix shell launcher
-├── run_simulation.py    # Trading strategy simulator launcher
-├── test_simulator.py    # Comprehensive simulator tests
-├── test_social_media_pipeline.py # Sentiment analysis integration tests
-├── test_reddit_connection.py # Reddit API connection tests
-├── test_vader_sentiment.py # Sentiment analyzer validation
-├── scripts/             # Utility scripts
-│   ├── review_trades.py # Trade performance analysis
-│   ├── review_trades.bat # Windows launcher for trade review
+│   ├── test_asset_protection_integration.py # Asset protection integration tests (11 tests)
+│   ├── test_simulator.py    # Comprehensive simulator tests
+│   ├── test_simulator_simple.py # Simple simulator tests
+│   ├── test_social_media_pipeline.py # Sentiment analysis integration tests
+│   ├── test_reddit_connection.py # Reddit API connection tests
+│   ├── test_telegram_connection.py # Telegram API connection tests
+│   ├── test_sentiment_integration.py # Sentiment integration tests
+│   ├── test_vader_sentiment.py # Sentiment analyzer validation
+│   └── test_asset_protection_upgrades.py # Asset protection upgrade tests
+├── simulator/                # Trading strategy simulator
+│   ├── __init__.py          # Package initialization
+│   ├── simulation_engine.py # Core simulation engine
+│   ├── mock_api.py          # Mock Bitvavo API with historical data
+│   ├── results_analyzer.py  # Analysis and reporting tools
+│   ├── swing_trading_simulator.py # Swing trading strategy simulator
+│   ├── data/               # Historical price data
+│   └── results/            # Simulation results and analysis
+├── scripts/                  # Utility scripts and launchers
+│   ├── start_bot.py         # Convenient launcher script
+│   ├── start_bot.bat        # Windows batch launcher
+│   ├── start_bot.sh         # Unix shell launcher
+│   ├── run_simulation.py    # Trading strategy simulator launcher
+│   ├── review_trades.py     # Trade performance analysis
+│   ├── review_trades.bat    # Windows launcher for trade review
 │   └── sell_small_holdings.py # Portfolio cleanup utility
-├── .env.example         # Environment variables template
-├── CLAUDE.md           # This file - main development guide
-├── CLAUDE_DIP_BUY.md   # Comprehensive dip buying strategy guide
-├── CLAUDE_ASSET_PROTECTION.md # Asset protection strategy guide
-├── CLAUDE_SIMULATOR.md # Detailed simulator documentation
-├── SOCIAL_MEDIA_SENTIMENT_SETUP.md # Sentiment analysis setup guide
-├── QUICKSTART.md       # Quick setup guide
-├── SAFETY_CHECKLIST.md # Pre-trading safety checks
-├── FIRST_RUN_BEHAVIOR.md # First run documentation
-├── BITVAVO_API_UPDATE.md # API changes documentation
-└── TERMINAL_OUTPUT_EXAMPLE.md # Example bot output
+├── tools/                    # Portfolio management tools
+│   ├── __init__.py          # Package initialization
+│   └── bitvavo_interface.py # Portfolio tracking functionality
+├── docs/                     # Documentation
+│   ├── ASSET_PROTECTION_UPGRADE_GUIDE.md # Asset protection upgrades
+│   ├── CLAUDE_ASSET_PROTECTION.md # Asset protection strategy guide
+│   ├── CLAUDE_DIP_BUY.md    # Comprehensive dip buying strategy guide
+│   ├── CLAUDE_SIMULATOR.md  # Detailed simulator documentation
+│   ├── CONFIGURATION_GUIDE.md # Configuration documentation
+│   ├── DIP_BUY_IMPLEMENTATION.md # Dip buying implementation guide
+│   ├── DOCUMENTATION_INDEX.md    # Documentation overview
+│   ├── DYNAMIC_REBUY_IMPLEMENTATION_GUIDE.md # Dynamic rebuy guide
+│   ├── ENHANCED_FEATURES_SUMMARY.md # Enhanced features overview
+│   ├── GIT_WORKFLOW.md      # Git workflow documentation
+│   ├── SIMULATOR_ARCHITECTURE.md # Simulator architecture
+│   ├── SIMULATOR_README.md  # Simulator usage guide
+│   ├── BITVAVO_API_UPDATE.md # API changes documentation
+│   ├── FIRST_RUN_BEHAVIOR.md # First run documentation
+│   ├── QUICKSTART.md        # Quick setup guide
+│   ├── SAFETY_CHECKLIST.md  # Pre-trading safety checks
+│   ├── SOCIAL_MEDIA_SENTIMENT_SETUP.md # Sentiment analysis setup guide
+│   ├── TERMINAL_OUTPUT_EXAMPLE.md # Example bot output
+│   └── UPGRADE_SIMULATION_RESULTS.md # Simulation results documentation
+├── requirements.txt         # Python dependencies
+├── setup.py                # Package setup configuration
+├── pytest.ini             # pytest configuration
+├── .env.example           # Environment variables template
+└── CLAUDE.md             # This file - main development guide
 ```
 
 ## Architecture
@@ -248,37 +256,37 @@ cp .env.example .env
 python src/main.py
 
 # Or use the launcher script (recommended)
-python start_bot.py
+python scripts/start_bot.py
 
 # Windows batch file
-start_bot.bat
+scripts/start_bot.bat
 
 # Unix shell script  
-./start_bot.sh
+./scripts/start_bot.sh
 ```
 
 ### Running the Simulator
 ```bash
 # Interactive simulator with strategy testing
-python run_simulation.py
+python scripts/run_simulation.py
 
 # Quick simulator tests
-python test_simulator.py
+python tests/test_simulator.py
 
 # Simple functionality test  
-python test_simulator_simple.py
+python tests/test_simulator_simple.py
 
 # Test Asset Protection Upgrades (v3.0 features)
-python test_asset_protection_upgrades.py
+python tests/test_asset_protection_upgrades.py
 
 # Test social media sentiment analysis pipeline
-python test_social_media_pipeline.py
+python tests/test_social_media_pipeline.py
 
 # Test Reddit API connection
-python test_reddit_connection.py
+python tests/test_reddit_connection.py
 
 # Test VADER sentiment analyzer
-python test_vader_sentiment.py
+python tests/test_vader_sentiment.py
 ```
 
 ### Testing
@@ -460,12 +468,12 @@ Run tests with `python -m pytest tests/ -v` for detailed output.
 ## Documentation
 
 Additional documentation files provide specific guidance:
-- `QUICKSTART.md` - Step-by-step setup instructions
-- `SAFETY_CHECKLIST.md` - Pre-trading safety verification  
-- `FIRST_RUN_BEHAVIOR.md` - What to expect on first execution
-- `BITVAVO_API_UPDATE.md` - Recent API changes and requirements
-- `TERMINAL_OUTPUT_EXAMPLE.md` - Example of typical bot output
-- `SOCIAL_MEDIA_SENTIMENT_SETUP.md` - Complete sentiment analysis setup guide
+- `docs/QUICKSTART.md` - Step-by-step setup instructions
+- `docs/SAFETY_CHECKLIST.md` - Pre-trading safety verification  
+- `docs/FIRST_RUN_BEHAVIOR.md` - What to expect on first execution
+- `docs/BITVAVO_API_UPDATE.md` - Recent API changes and requirements
+- `docs/TERMINAL_OUTPUT_EXAMPLE.md` - Example of typical bot output
+- `docs/SOCIAL_MEDIA_SENTIMENT_SETUP.md` - Complete sentiment analysis setup guide
 
 ## Unicode and Encoding Issues (Windows)
 

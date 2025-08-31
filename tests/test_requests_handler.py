@@ -3,8 +3,14 @@ import time
 import json
 import hmac
 import hashlib
-from requests_handler import BitvavoAPI
-from config import APIConfig
+import sys
+from pathlib import Path
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from src.requests_handler import BitvavoAPI
+from src.config import APIConfig
 
 # Dummy response to simulate a successful HTTP request.
 class DummyResponse:

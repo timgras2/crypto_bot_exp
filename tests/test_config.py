@@ -1,7 +1,11 @@
 import os
 import unittest
 from decimal import Decimal
-from config import load_config
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from src.config import load_config
 
 class TestConfig(unittest.TestCase):
     def setUp(self):
@@ -30,7 +34,7 @@ class TestConfig(unittest.TestCase):
             os.environ.pop(key, None)
 
     def test_load_config(self):
-        trading_config, api_config, dip_config, asset_protection_config = load_config()
+        trading_config, api_config, dip_config, asset_protection_config, sentiment_config = load_config()
 
         # Check TradingConfig values
         self.assertEqual(trading_config.min_profit_pct, Decimal("4.5"))

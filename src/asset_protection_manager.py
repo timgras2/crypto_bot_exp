@@ -11,12 +11,12 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-from config import AssetProtectionConfig, TradingConfig, DipLevel, ProfitLevel
-from requests_handler import BitvavoAPI
-from volatility_calculator import VolatilityCalculator
-from protected_asset_state import ProtectedAssetStateManager, ProtectedAssetInfo
-from enhanced_asset_protection import EnhancedAssetProtectionManager
-from circuit_breaker import (
+from .config import AssetProtectionConfig, TradingConfig, DipLevel, ProfitLevel
+from .requests_handler import BitvavoAPI
+from .volatility_calculator import VolatilityCalculator
+from .protected_asset_state import ProtectedAssetStateManager, ProtectedAssetInfo
+from .enhanced_asset_protection import EnhancedAssetProtectionManager
+from .circuit_breaker import (
     CircuitBreaker, CircuitBreakerError, 
     create_api_circuit_breaker, create_trading_circuit_breaker, create_balance_circuit_breaker
 )

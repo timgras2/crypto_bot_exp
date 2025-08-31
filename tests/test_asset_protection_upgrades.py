@@ -1,18 +1,26 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Asset Protection Upgrades Simulator
 Tests the new upgrade guide features with realistic scenarios
 """
 
 import sys
+
+# Fix Unicode encoding on Windows
+if sys.platform.startswith('win'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except (AttributeError, OSError):
+        pass
 from pathlib import Path
 from decimal import Decimal
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent / "src"))
+# Add parent directory to path for imports (tests are now in tests/)
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import AssetProtectionConfig, TradingConfig, DipLevel, SwingLevel
 from protected_asset_state import ProtectedAssetStateManager, ProtectedAssetInfo, PricePoint
