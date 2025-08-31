@@ -11,11 +11,11 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from src.config import DipBuyConfig, TradingConfig
-from src.requests_handler import BitvavoAPI
-from src.strategies.dip_evaluator import DipEvaluator, AssetSaleInfo, RebuyDecision
-from src.strategies.dip_state import DipStateManager
-from src.strategies.market_filter import MarketFilter
+from ..config import DipBuyConfig, TradingConfig
+from ..requests_handler import BitvavoAPI
+from .dip_evaluator import DipEvaluator, AssetSaleInfo, RebuyDecision
+from .dip_state import DipStateManager
+from .market_filter import MarketFilter
 
 logger = logging.getLogger(__name__)
 

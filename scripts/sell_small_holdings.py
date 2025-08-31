@@ -19,8 +19,17 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 
+# Fix Unicode encoding on Windows
+if sys.platform.startswith('win'):
+    try:
+        # Try to set UTF-8 for stdout
+        sys.stdout.reconfigure(encoding='utf-8')
+    except (AttributeError, OSError):
+        # Fallback for older Python versions or restricted environments
+        pass
+
 # Add src directory to path for imports
-src_path = Path(__file__).parent / "src"
+src_path = Path(__file__).parent.parent / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
@@ -365,7 +374,7 @@ def main():
     try:
         # Load configuration
         print("📊 Loading configuration...")
-        trading_config, api_config = load_config()
+        trading_config, api_config, _, _ = load_config()
         
         # Initialize API
         print("🔌 Connecting to Bitvavo API...")

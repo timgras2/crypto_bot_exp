@@ -26,9 +26,7 @@ class TradingBot:
         self.dip_manager = None
         if self.dip_config.enabled:
             try:
-                import sys
-                sys.path.insert(0, str(Path(__file__).parent.parent))
-                from future_work.dip_buy_manager import DipBuyManager
+                from strategies.dip_buy_manager import DipBuyManager
                 data_dir = Path("data")
                 self.dip_manager = DipBuyManager(
                     api=self.api,
