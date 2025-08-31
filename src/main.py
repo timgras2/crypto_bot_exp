@@ -66,7 +66,7 @@ class TradingBot:
         self.sentiment_collector = None
         if self.sentiment_config.enabled:
             try:
-                from sentiment.data_collector import MultiSourceDataCollector
+                from .sentiment.data_collector import MultiSourceDataCollector
                 self.sentiment_collector = MultiSourceDataCollector(self.sentiment_config)
                 logging.info("Sentiment analysis system initialized")
             except ImportError as e:

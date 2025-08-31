@@ -345,7 +345,7 @@ class SmallHoldingsCleanup:
 def main():
     """Main entry point for the script."""
     # Setup logging
-    logs_dir = Path(__file__).parent / "logs"
+    logs_dir = Path(__file__).parent.parent / "logs"
     logs_dir.mkdir(exist_ok=True)
     
     logging.basicConfig(
