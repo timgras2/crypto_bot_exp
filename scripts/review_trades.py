@@ -32,7 +32,7 @@ def load_json_file(file_path: Path) -> list:
 
 def display_active_trades():
     """Display currently active trades with unrealized P&L."""
-    data_dir = Path(__file__).parent / "data"
+    data_dir = Path(__file__).parent.parent / "data"
     active_file = data_dir / "active_trades.json"
     
     print("=" * 80)
@@ -95,7 +95,7 @@ def display_active_trades():
 
 def display_completed_trades(days: int = None):
     """Display completed trades with realized P&L."""
-    data_dir = Path(__file__).parent / "data"
+    data_dir = Path(__file__).parent.parent / "data"
     completed_file = data_dir / "completed_trades.json"
     
     print("=" * 80)
@@ -226,7 +226,7 @@ def display_summary():
     print("=" * 80)
     
     # Get active trades summary
-    data_dir = Path(__file__).parent / "data"
+    data_dir = Path(__file__).parent.parent / "data"
     active_file = data_dir / "active_trades.json"
     completed_file = data_dir / "completed_trades.json"
     

@@ -7,8 +7,12 @@ from datetime import datetime
 from dataclasses import dataclass, asdict
 from typing import Optional, Dict
 from pathlib import Path
-from .config import TradingConfig
-from .requests_handler import BitvavoAPI
+try:
+    from .config import TradingConfig
+    from .requests_handler import BitvavoAPI
+except ImportError:
+    from config import TradingConfig
+    from requests_handler import BitvavoAPI
 
 @dataclass
 class TradeState:

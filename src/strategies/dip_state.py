@@ -12,7 +12,13 @@ from typing import Dict, Any, Optional, List
 from decimal import Decimal, InvalidOperation
 
 from .dip_evaluator import AssetSaleInfo
-from ..config import DipBuyConfig
+try:
+    from ..config import DipBuyConfig
+except ImportError:
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from config import DipBuyConfig
 
 logger = logging.getLogger(__name__)
 

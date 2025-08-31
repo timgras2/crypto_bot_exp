@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Small Holdings Cleanup Script
 
@@ -15,12 +16,19 @@ Options:
 import sys
 import logging
 import time
+
+# Fix Unicode encoding on Windows
+if sys.platform.startswith('win'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except (AttributeError, OSError):
+        pass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional
 
 # Add src directory to path for imports
-src_path = Path(__file__).parent / "src"
+src_path = Path(__file__).parent.parent / "src"
 if str(src_path) not in sys.path:
     sys.path.insert(0, str(src_path))
 
@@ -337,7 +345,7 @@ class SmallHoldingsCleanup:
 def main():
     """Main entry point for the script."""
     # Setup logging
-    logs_dir = Path(__file__).parent / "logs"
+    logs_dir = Path(__file__).parent.parent / "logs"
     logs_dir.mkdir(exist_ok=True)
     
     logging.basicConfig(
@@ -365,7 +373,7 @@ def main():
     try:
         # Load configuration
         print("📊 Loading configuration...")
-        trading_config, api_config = load_config()
+        trading_config, api_config, dip_config = load_config()
         
         # Initialize API
         print("🔌 Connecting to Bitvavo API...")

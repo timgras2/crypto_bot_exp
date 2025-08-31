@@ -14,10 +14,16 @@ if sys.platform.startswith('win'):
     except (AttributeError, OSError):
         pass
 
-from .config import load_config
-from .requests_handler import BitvavoAPI
-from .market_utils import MarketTracker
-from .trade_logic import TradeManager
+try:
+    from .config import load_config
+    from .requests_handler import BitvavoAPI
+    from .market_utils import MarketTracker
+    from .trade_logic import TradeManager
+except ImportError:
+    from config import load_config
+    from requests_handler import BitvavoAPI
+    from market_utils import MarketTracker
+    from trade_logic import TradeManager
 
 
 class TradingBot:

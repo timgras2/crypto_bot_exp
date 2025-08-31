@@ -11,8 +11,15 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Optional, Dict, Any
 
-from ..config import DipBuyConfig, TradingConfig
-from ..requests_handler import BitvavoAPI
+try:
+    from ..config import DipBuyConfig, TradingConfig
+    from ..requests_handler import BitvavoAPI
+except ImportError:
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from config import DipBuyConfig, TradingConfig
+    from requests_handler import BitvavoAPI
 from .dip_evaluator import DipEvaluator, AssetSaleInfo, RebuyDecision
 from .dip_state import DipStateManager
 from .market_filter import MarketFilter
