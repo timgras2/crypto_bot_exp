@@ -48,7 +48,7 @@ class TradingBot:
         self.asset_protection_manager = None
         if self.asset_protection_config.enabled:
             try:
-                from asset_protection_manager import AssetProtectionManager
+                from .asset_protection_manager import AssetProtectionManager
                 data_dir = Path("data")
                 self.asset_protection_manager = AssetProtectionManager(
                     api=self.api,

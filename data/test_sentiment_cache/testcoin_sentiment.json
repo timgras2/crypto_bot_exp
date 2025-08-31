@@ -1,0 +1,206 @@
+{
+  "sentiment_results": [
+    {
+      "symbol": "TESTCOIN",
+      "aggregated_sentiment": 0.5,
+      "confidence": 0.8,
+      "total_posts": 10,
+      "timestamp": "2025-08-31T08:14:09.694806"
+    },
+    {
+      "symbol": "TESTCOIN",
+      "aggregated_sentiment": 0.5,
+      "confidence": 0.8,
+      "total_posts": 10,
+      "timestamp": "2025-08-31T08:23:54.465048"
+    },
+    {
+      "symbol": "TESTCOIN",
+      "aggregated_sentiment": 0.5,
+      "confidence": 0.8,
+      "total_posts": 10,
+      "timestamp": "2025-08-31T08:25:51.130887"
+    },
+    {
+      "symbol": "TESTCOIN",
+      "aggregated_sentiment": 0.5,
+      "confidence": 0.8,
+      "total_posts": 10,
+      "timestamp": "2025-08-31T08:26:16.352962"
+    },
+    {
+      "symbol": "TESTCOIN",
+      "aggregated_sentiment": 0.5,
+      "confidence": 0.8,
+      "total_posts": 10,
+      "timestamp": "2025-08-31T08:32:06.661701+00:00"
+    },
+    {
+      "symbol": "TESTCOIN",
+      "aggregated_sentiment": 0.5,
+      "confidence": 0.8,
+      "total_posts": 10,
+      "timestamp": "2025-08-31T08:32:48.221642+00:00"
+    }
+  ],
+  "last_updated": "2025-08-31T08:32:48.231687+00:00",
+  "symbol": "TESTCOIN",
+  "raw_posts": [
+    {
+      "text": "Just bought some TESTCOIN! Looking bullish for the long term 🚀",
+      "author": "reddit_user_0",
+      "timestamp": "2025-08-31T08:14:09.701037",
+      "source": "reddit_r_CryptoCurrency",
+      "url": "https://reddit.com/r/crypto/post_0",
+      "score": 5,
+      "num_comments": 0,
+      "id": "reddit_post_0",
+      "subreddit": "CryptoCurrency",
+      "hash": "3800fd4c6336a76a9fd97186e64f31e8",
+      "cached_at": "2025-08-31T08:14:09.703191"
+    },
+    {
+      "text": "TESTCOIN has amazing fundamentals, diamond hands all the way! 💎🙌",
+      "author": "reddit_user_1",
+      "timestamp": "2025-08-31T07:44:09.701037",
+      "source": "reddit_r_CryptoCurrency",
+      "url": "https://reddit.com/r/crypto/post_1",
+      "score": 6,
+      "num_comments": 1,
+      "id": "reddit_post_1",
+      "subreddit": "CryptoCurrency",
+      "hash": "134ba5a1bd7ce7da4f1b12b118b0d9cc",
+      "cached_at": "2025-08-31T08:14:09.703256"
+    },
+    {
+      "text": "Just bought some TESTCOIN! Looking bullish for the long term 🚀",
+      "author": "reddit_user_0",
+      "timestamp": "2025-08-31T08:23:54.474974",
+      "source": "reddit_r_CryptoCurrency",
+      "url": "https://reddit.com/r/crypto/post_0",
+      "score": 5,
+      "num_comments": 0,
+      "id": "reddit_post_0",
+      "subreddit": "CryptoCurrency",
+      "hash": "ac1ad3f48b3cd7ff48930c9c02a8ec32",
+      "cached_at": "2025-08-31T08:23:54.477416"
+    },
+    {
+      "text": "TESTCOIN has amazing fundamentals, diamond hands all the way! 💎🙌",
+      "author": "reddit_user_1",
+      "timestamp": "2025-08-31T07:53:54.474974",
+      "source": "reddit_r_CryptoCurrency",
+      "url": "https://reddit.com/r/crypto/post_1",
+      "score": 6,
+      "num_comments": 1,
+      "id": "reddit_post_1",
+      "subreddit": "CryptoCurrency",
+      "hash": "7a7ce0dd1915c46771c95d16bed821fc",
+      "cached_at": "2025-08-31T08:23:54.477494"
+    },
+    {
+      "text": "Just bought some TESTCOIN! Looking bullish for the long term 🚀",
+      "author": "reddit_user_0",
+      "timestamp": "2025-08-31T08:25:51.139955",
+      "source": "reddit_r_CryptoCurrency",
+      "url": "https://reddit.com/r/crypto/post_0",
+      "score": 5,
+      "num_comments": 0,
+      "id": "reddit_post_0",
+      "subreddit": "CryptoCurrency",
+      "hash": "c45189e4bd9f37ac7c4a5069da5fe286",
+      "cached_at": "2025-08-31T08:25:51.141942"
+    },
+    {
+      "text": "TESTCOIN has amazing fundamentals, diamond hands all the way! 💎🙌",
+      "author": "reddit_user_1",
+      "timestamp": "2025-08-31T07:55:51.139955",
+      "source": "reddit_r_CryptoCurrency",
+      "url": "https://reddit.com/r/crypto/post_1",
+      "score": 6,
+      "num_comments": 1,
+      "id": "reddit_post_1",
+      "subreddit": "CryptoCurrency",
+      "hash": "fe5a1ac79f48d22ace23d6da8c85cc5d",
+      "cached_at": "2025-08-31T08:25:51.142054"
+    },
+    {
+      "text": "Just bought some TESTCOIN! Looking bullish for the long term 🚀",
+      "author": "reddit_user_0",
+      "timestamp": "2025-08-31T08:26:16.361813",
+      "source": "reddit_r_CryptoCurrency",
+      "url": "https://reddit.com/r/crypto/post_0",
+      "score": 5,
+      "num_comments": 0,
+      "id": "reddit_post_0",
+      "subreddit": "CryptoCurrency",
+      "hash": "8684b9eba16ae76032e9ea8b0e84102c",
+      "cached_at": "2025-08-31T08:26:16.364396"
+    },
+    {
+      "text": "TESTCOIN has amazing fundamentals, diamond hands all the way! 💎🙌",
+      "author": "reddit_user_1",
+      "timestamp": "2025-08-31T07:56:16.361813",
+      "source": "reddit_r_CryptoCurrency",
+      "url": "https://reddit.com/r/crypto/post_1",
+      "score": 6,
+      "num_comments": 1,
+      "id": "reddit_post_1",
+      "subreddit": "CryptoCurrency",
+      "hash": "7a680231b8fc406c7420ed09d2cb0dbc",
+      "cached_at": "2025-08-31T08:26:16.364450"
+    },
+    {
+      "text": "Just bought some TESTCOIN! Looking bullish for the long term 🚀",
+      "author": "reddit_user_0",
+      "timestamp": "2025-08-31T08:32:06.670983+00:00",
+      "source": "reddit_r_CryptoCurrency",
+      "url": "https://reddit.com/r/crypto/post_0",
+      "score": 5,
+      "num_comments": 0,
+      "id": "reddit_post_0",
+      "subreddit": "CryptoCurrency",
+      "hash": "b8d9971008e043df964c87060876ac70",
+      "cached_at": "2025-08-31T08:32:06.673544+00:00"
+    },
+    {
+      "text": "TESTCOIN has amazing fundamentals, diamond hands all the way! 💎🙌",
+      "author": "reddit_user_1",
+      "timestamp": "2025-08-31T08:02:06.670983+00:00",
+      "source": "reddit_r_CryptoCurrency",
+      "url": "https://reddit.com/r/crypto/post_1",
+      "score": 6,
+      "num_comments": 1,
+      "id": "reddit_post_1",
+      "subreddit": "CryptoCurrency",
+      "hash": "a3b7bc2ff069b88b54229382ba11649d",
+      "cached_at": "2025-08-31T08:32:06.673589+00:00"
+    },
+    {
+      "text": "Just bought some TESTCOIN! Looking bullish for the long term 🚀",
+      "author": "reddit_user_0",
+      "timestamp": "2025-08-31T08:32:48.229155+00:00",
+      "source": "reddit_r_CryptoCurrency",
+      "url": "https://reddit.com/r/crypto/post_0",
+      "score": 5,
+      "num_comments": 0,
+      "id": "reddit_post_0",
+      "subreddit": "CryptoCurrency",
+      "hash": "ff44872024bcf9f55514eb49d19f0270",
+      "cached_at": "2025-08-31T08:32:48.231536+00:00"
+    },
+    {
+      "text": "TESTCOIN has amazing fundamentals, diamond hands all the way! 💎🙌",
+      "author": "reddit_user_1",
+      "timestamp": "2025-08-31T08:02:48.229155+00:00",
+      "source": "reddit_r_CryptoCurrency",
+      "url": "https://reddit.com/r/crypto/post_1",
+      "score": 6,
+      "num_comments": 1,
+      "id": "reddit_post_1",
+      "subreddit": "CryptoCurrency",
+      "hash": "76d31605cad06518b106f85ed73c7ad9",
+      "cached_at": "2025-08-31T08:32:48.231609+00:00"
+    }
+  ]
+}
