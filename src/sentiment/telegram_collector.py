@@ -55,7 +55,14 @@ class TelegramCollector:
         
         # Initialize client
         self.client = None
-        self.session_name = 'crypto_sentiment_session'
+        
+        # Use temp directory to avoid OneDrive sync issues
+        import tempfile
+        from pathlib import Path
+        temp_dir = Path(tempfile.gettempdir()) / 'crypto_bot'
+        temp_dir.mkdir(exist_ok=True)
+        self.session_name = str(temp_dir / 'crypto_sentiment_session')
+        
         self.is_connected = False
         self.rate_limit_delay = 1.0  # Delay between API calls
         self.last_request_time = 0
@@ -89,11 +96,13 @@ class TelegramCollector:
             return False
         
         try:
-            await self.client.start(phone=self.config.TELEGRAM_PHONE_NUMBER)
+            # Try to connect with existing session (non-interactive)
+            await self.client.connect()
             
-            # Check if we need 2FA
+            # Check if we're already authorized from the session
             if not await self.client.is_user_authorized():
-                logger.error("Telegram client not authorized")
+                logger.warning("Telegram session expired or invalid - skipping Telegram collection")
+                logger.info("To fix: run interactive authentication once to create valid session file")
                 return False
             
             self.is_connected = True
@@ -106,6 +115,7 @@ class TelegramCollector:
             return False
         except Exception as e:
             logger.error(f"Failed to connect to Telegram: {e}")
+            logger.info("Run telegram authentication interactively once to create session file")
             return False
     
     def _rate_limit_check(self):

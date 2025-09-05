@@ -56,8 +56,7 @@ class RedditCollector:
             'binance',             # 800K members, CEX-specific discussions
             'coinbase',            # 500K members, CEX-specific discussions
             'BitcoinBeginners',    # 690K members, retail sentiment indicator
-            'avalanche',           # 57K members, AVAX ecosystem (highly engaged)
-            # Note: Removed SatoshiStreetBets (declining quality) and CryptoMoonShots (requires heavy filtering)
+            # Note: Removed r/avalanche (403 access), SatoshiStreetBets (declining quality) and CryptoMoonShots (requires heavy filtering)
         ]
         
         # Initialize Reddit client

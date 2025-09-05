@@ -1,6 +1,7 @@
 import logging
 import signal
 import time
+from decimal import Decimal
 from pathlib import Path
 
 from .config import load_config
@@ -342,7 +343,7 @@ class TradingBot:
                         continue
 
                     # Calculate final trade amount with sentiment adjustment
-                    final_trade_amount = base_trade_amount * sentiment_multiplier
+                    final_trade_amount = base_trade_amount * Decimal(str(sentiment_multiplier))
                     print(f"💸 EXECUTING BUY ORDER: €{final_trade_amount:.2f} of {market} (base: €{base_trade_amount}, sentiment: {sentiment_multiplier:.2f}x)")
                     buy_price = self.trade_manager.place_market_buy(
                         market,
