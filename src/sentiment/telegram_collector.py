@@ -39,18 +39,29 @@ class TelegramCollector:
         """
         self.config = config
         
-        # Major crypto Telegram channels (public channels/groups)
+        # Major crypto Telegram channels (optimized for new token detection)
         self.crypto_channels = [
-            '@CryptoPanic',           # News aggregator
-            '@CryptoNewsOfficialTG',  # News channel
+            # Tier 1: New Token Discovery & Trading Signals (highest new token activity)
+            '@CryptoSignalsAdvice',   # Trading signals - new tokens often featured
+            '@altcoins',              # Altcoin discussion - new token central
+            '@CryptoCurrencyPinned',  # General crypto chat - active community
+            '@defi_news',             # DeFi-specific new token announcements
+            
+            # Tier 2: News & Analysis (some new token coverage)
+            '@CryptoPanicBot',        # News aggregator (corrected username)
+            '@CoinTelegraph',         # Major crypto news outlet
+            '@Cointelegraph',         # Alternative name
             '@CoinMarketCapNews',     # CoinMarketCap official
-            '@binance',               # Binance official
+            
+            # Tier 3: Ecosystem-Specific (new ecosystem tokens)
+            '@ethereum',              # Ethereum community - ETH ecosystem tokens
+            '@SolanaNews',            # Solana ecosystem - new SOL tokens
+            '@avalanche_hub',         # AVAX ecosystem announcements
+            
+            # Tier 4: Exchange & Established (official announcements)
+            '@binance_announcements', # Binance new listing announcements (corrected)
             '@coinbase',              # Coinbase official
-            '@CryptoSignalsAdvice',   # Trading signals
-            '@CryptoCurrencyPinned',  # General crypto chat
-            '@BitcoinMagazine',       # Bitcoin Magazine
-            '@ethereum',              # Ethereum community
-            '@altcoins',              # Altcoin discussion
+            '@BitcoinMagazine',       # Bitcoin Magazine - mostly established coins
         ]
         
         # Initialize client

@@ -36,27 +36,33 @@ class RedditCollector:
         """
         self.config = config
         
-        # Primary crypto subreddits (updated 2025 - ordered by quality and activity)
-        # Tier 1: Core Communities (highest quality, most active)
+        # Primary crypto subreddits (optimized for new token detection - 2025)
+        # Tier 1: New Token Discovery (highest new token activity)
         self.crypto_subreddits = [
+            'CryptoMoonShots',     # 2.1M members, NEW TOKEN CENTRAL (requires spam filtering)
+            'SatoshiStreetBets',   # 1.3M members, very active new token discussions
+            'CryptoCurrencyTrading', # 900K members, active trading community
+            'ethtrader',           # 1.9M members, ETH ecosystem new tokens
+            
+            # Tier 2: Core Communities (established quality + some new tokens)
             'CryptoCurrency',      # 9.9M members, highest quality discussions
-            'Bitcoin',             # 7.8M members, BTC ecosystem focus
-            'ethereum',            # 3.7M members, ETH ecosystem focus  
             'CryptoMarkets',       # 1.7M members, trading and market analysis
-            'CryptoTechnology',    # 1.3M members, technical discussions
-            
-            # Tier 2: Ecosystem-Specific (2025 additions)
-            'solana',              # 449K members, fast-growing SOL ecosystem
-            'cardano',             # 700K members, ADA governance and development
-            'defi',                # DeFi protocols and yield farming trends
-            'web3',                # Web3 infrastructure and emerging trends
             'altcoin',             # 226K members, general altcoin discussions
+            'defi',                # DeFi protocols and yield farming trends
             
-            # Tier 3: Specialized & Exchange-Specific
+            # Tier 3: Ecosystem-Specific (new ecosystem tokens)
+            'solana',              # 449K members, fast-growing SOL ecosystem
+            'ethereum',            # 3.7M members, ETH ecosystem focus  
+            'web3',                # Web3 infrastructure and emerging trends
+            'cardano',             # 700K members, ADA governance and development
+            
+            # Tier 4: Exchange & Established (lower priority for new tokens)
             'binance',             # 800K members, CEX-specific discussions
             'coinbase',            # 500K members, CEX-specific discussions
+            'Bitcoin',             # 7.8M members, BTC focus (rarely new tokens)
+            'CryptoTechnology',    # 1.3M members, technical discussions
             'BitcoinBeginners',    # 690K members, retail sentiment indicator
-            # Note: Removed r/avalanche (403 access), SatoshiStreetBets (declining quality) and CryptoMoonShots (requires heavy filtering)
+            # Note: Removed r/avalanche (403 access)
         ]
         
         # Initialize Reddit client

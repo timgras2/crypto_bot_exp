@@ -263,7 +263,15 @@ class CryptoSentimentProcessor:
             'excessive_exclamation': text.count('!') > 8,
             'all_caps_words': len([word for word in text.split() if word.isupper() and len(word) > 3]) > 3,
             'repeated_words': len(text.split()) != len(set(text.lower().split())),
-            'guaranteed_keywords': any(word in text_lower for word in ['guaranteed', '100x', 'lambo guaranteed'])
+            'guaranteed_keywords': any(word in text_lower for word in ['guaranteed', '100x', 'lambo guaranteed']),
+            
+            # Enhanced detection for new token pump schemes (added for CryptoMoonShots)
+            'new_gem_spam': text_lower.count('gem') > 2,
+            'presale_spam': any(word in text_lower for word in ['presale', 'pre-sale', 'ico launching', 'new launch']),
+            'urgency_spam': any(word in text_lower for word in ['now or never', 'last chance', 'dont miss', 'hurry up']),
+            'price_prediction_spam': any(word in text_lower for word in ['1000x', '10000x', 'next shib', 'next doge']),
+            'social_proof_spam': text_lower.count('everyone is buying') > 0 or text_lower.count('everyone buying') > 0,
+            'financial_advice_red_flag': any(word in text_lower for word in ['financial advice', 'trust me bro', 'easy money'])
         }
         
         # Consider spam if 3 or more indicators

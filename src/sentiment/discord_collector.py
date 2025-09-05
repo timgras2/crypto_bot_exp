@@ -45,15 +45,55 @@ class DiscordCollector:
         self.is_running = False
         self.collection_lock = threading.Lock()
         
-        # Crypto-related Discord servers and channels to monitor
-        # Note: Bot needs to be invited to these servers
-        self.target_channels = {
-            # Format: 'server_name': ['channel_name1', 'channel_name2']
-            # These would need to be configured based on actual server invites
-            'crypto_general': ['general', 'trading', 'new-listings'],
-            'defi': ['announcements', 'discussion', 'alpha'],
-            'altcoins': ['new-coins', 'discussion', 'analysis']
+        # Target crypto Discord servers optimized for new token detection
+        # IMPORTANT: Bot must be invited to these servers with Message Content Intent enabled
+        self.target_servers = {
+            # Major Public Crypto Discord Servers (invite bot to these)
+            # Format: 'Server Name': {'channels': [...], 'priority': high/medium/low, 'invite_link': '...'}
+            
+            # Tier 1: High new token activity (invite bot here first)
+            'DegenScore': {
+                'channels': ['new-listings', 'general', 'alpha-calls', 'degen-chat'],
+                'priority': 'high',
+                'focus': 'New DeFi tokens, early gems, high-risk plays'
+            },
+            'Crypto Gem Hunters': {
+                'channels': ['gem-calls', 'new-launches', 'presales', 'general'],
+                'priority': 'high', 
+                'focus': 'Early-stage token discovery'
+            },
+            
+            # Tier 2: Established communities with new token discussion
+            'DeFiPulse': {
+                'channels': ['general', 'new-projects', 'farming', 'announcements'],
+                'priority': 'medium',
+                'focus': 'DeFi protocol launches and updates'
+            },
+            'Crypto Twitter': {
+                'channels': ['general', 'alpha', 'calls', 'new-coins'],
+                'priority': 'medium',
+                'focus': 'Crypto influencer discussions'
+            },
+            
+            # Tier 3: Exchange and ecosystem-specific
+            'Uniswap': {
+                'channels': ['general', 'new-pairs', 'trading'],
+                'priority': 'medium',
+                'focus': 'New Uniswap token listings'
+            },
+            'Solana Trader': {
+                'channels': ['general', 'new-tokens', 'degen-plays'],
+                'priority': 'medium',
+                'focus': 'Solana ecosystem new tokens'
+            }
         }
+        
+        # Fallback: Generic channel names to search in any server the bot joins
+        self.generic_target_channels = [
+            'general', 'trading', 'new-listings', 'alpha', 'calls', 
+            'announcements', 'gem-calls', 'new-tokens', 'presales',
+            'degen-chat', 'moonshots', 'altcoins'
+        ]
         
         # Initialize bot with intents
         intents = discord.Intents.default()
@@ -110,13 +150,23 @@ class DiscordCollector:
             True if channel should be monitored
         """
         channel_name_lower = channel.name.lower()
-        server_name_lower = channel.guild.name.lower()
+        server_name = channel.guild.name
         
-        # Look for crypto-related keywords in channel or server names
-        crypto_keywords = [
-            'crypto', 'bitcoin', 'btc', 'ethereum', 'eth', 'defi',
-            'altcoin', 'trading', 'blockchain', 'token', 'coin',
-            'dex', 'nft', 'web3', 'solana', 'binance', 'coinbase'
+        # Priority 1: Check if server is in our target list
+        for target_server, config in self.target_servers.items():
+            if target_server.lower() in server_name.lower():
+                if channel_name_lower in [c.lower() for c in config['channels']]:
+                    logger.info(f"Monitoring {server_name}#{channel.name} (target server)")
+                    return True
+        
+        # Priority 2: Check generic channel names in any crypto-related server
+        if channel_name_lower in [c.lower() for c in self.generic_target_channels]:
+            # Look for crypto-related keywords in server name
+            crypto_server_keywords = [
+                'crypto', 'bitcoin', 'btc', 'ethereum', 'eth', 'defi',
+                'altcoin', 'trading', 'blockchain', 'token', 'coin',
+                'dex', 'nft', 'web3', 'solana', 'binance', 'coinbase',
+                'moon', 'gem', 'degen', 'yield', 'farm', 'swap'
         ]
         
         # Check channel name
