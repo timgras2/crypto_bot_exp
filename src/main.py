@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .config import load_config
 from .requests_handler import BitvavoAPI
+from .exchange_manager import ExchangeManager
 from .market_utils import MarketTracker
 from .trade_logic import TradeManager
 
@@ -13,10 +14,15 @@ from .trade_logic import TradeManager
 class TradingBot:
     def __init__(self) -> None:
         # Load configuration
-        self.trading_config, self.api_config, self.dip_config, self.asset_protection_config, self.sentiment_config = load_config()
+        self.trading_config, self.exchange_config, self.dip_config, self.asset_protection_config, self.sentiment_config = load_config()
 
+        # Initialize exchange manager
+        self.exchange_manager = ExchangeManager(self.exchange_config)
+        
+        # Get primary exchange API for backward compatibility
+        self.api = self.exchange_manager.get_primary_exchange()
+        
         # Initialize components
-        self.api = BitvavoAPI(self.api_config)
         self.market_tracker = MarketTracker(
             api=self.api,
             storage_path=Path("data") / "previous_markets.json"
@@ -145,6 +151,12 @@ class TradingBot:
         """Main bot loop."""
         logging.info("Starting trading bot...")
         print("🤖 Bot is now active and scanning for new listings...")
+        
+        # Show exchange information
+        enabled_exchanges = self.exchange_manager.get_enabled_exchanges()
+        print(f"🏦 Enabled exchanges: {', '.join(enabled_exchanges)}")
+        print(f"⭐ Primary exchange: {self.exchange_config.primary_exchange}")
+        
         print(f"💰 Max trade amount: €{self.trading_config.max_trade_amount}")
         print(f"🔄 Checking every {self.trading_config.check_interval} seconds")
         print(f"📈 Stop loss: {self.trading_config.min_profit_pct}% | Trailing stop: {self.trading_config.trailing_pct}%")

@@ -2,7 +2,7 @@ import os
 import logging
 from decimal import Decimal, InvalidOperation
 from dataclasses import dataclass, field
-from typing import List, Dict
+from typing import List, Dict, Optional
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -30,6 +30,20 @@ class APIConfig:
     base_url: str
     rate_limit: int  # requests per minute
     timeout: int  # seconds
+    passphrase: str = ""  # For KuCoin API
+
+
+@dataclass
+class ExchangeConfig:
+    """Multi-exchange configuration."""
+    enabled_exchanges: List[str] = field(default_factory=lambda: ["bitvavo"])  # bitvavo, kucoin
+    primary_exchange: str = "bitvavo"  # Primary exchange for new listings
+    
+    # Bitvavo specific config
+    bitvavo: Optional[APIConfig] = None
+    
+    # KuCoin specific config  
+    kucoin: Optional[APIConfig] = None
 
 
 @dataclass
@@ -621,19 +635,91 @@ def _load_asset_protection_config() -> AssetProtectionConfig:
     )
 
 
-def load_config() -> tuple[TradingConfig, APIConfig, DipBuyConfig, AssetProtectionConfig, SentimentConfig]:
-    """Load and validate configuration."""
-    # Validate required environment variables
-    required_vars = ["BITVAVO_API_KEY", "BITVAVO_API_SECRET"]
-    missing_vars = [var for var in required_vars if not os.getenv(var)]
-    if missing_vars:
-        raise ValueError(f"Missing required environment variables: {', '.join(missing_vars)}")
-
-    api_key = os.getenv("BITVAVO_API_KEY", "")
-    api_secret = os.getenv("BITVAVO_API_SECRET", "")
+def _load_exchange_config() -> ExchangeConfig:
+    """Load multi-exchange configuration from environment variables."""
+    enabled_exchanges_str = os.getenv("ENABLED_EXCHANGES", "bitvavo")
+    enabled_exchanges = [ex.strip().lower() for ex in enabled_exchanges_str.split(",") if ex.strip()]
     
-    # Validate API credentials
-    _validate_api_credentials(api_key, api_secret)
+    # Validate enabled exchanges
+    valid_exchanges = {"bitvavo", "kucoin"}
+    invalid_exchanges = set(enabled_exchanges) - valid_exchanges
+    if invalid_exchanges:
+        raise ValueError(f"Invalid exchanges: {invalid_exchanges}. Valid exchanges: {valid_exchanges}")
+    
+    primary_exchange = os.getenv("PRIMARY_EXCHANGE", "bitvavo").lower()
+    if primary_exchange not in enabled_exchanges:
+        raise ValueError(f"Primary exchange '{primary_exchange}' must be in enabled exchanges: {enabled_exchanges}")
+    
+    # Initialize exchange configs
+    bitvavo_config = None
+    kucoin_config = None
+    
+    # Load Bitvavo config if enabled
+    if "bitvavo" in enabled_exchanges:
+        bitvavo_api_key = os.getenv("BITVAVO_API_KEY", "")
+        bitvavo_api_secret = os.getenv("BITVAVO_API_SECRET", "")
+        
+        if not bitvavo_api_key or not bitvavo_api_secret:
+            raise ValueError("Missing required Bitvavo API credentials: BITVAVO_API_KEY, BITVAVO_API_SECRET")
+        
+        _validate_api_credentials(bitvavo_api_key, bitvavo_api_secret)
+        
+        bitvavo_base_url = os.getenv("BITVAVO_BASE_URL", "https://api.bitvavo.com/v2")
+        if not bitvavo_base_url.startswith("https://"):
+            raise ValueError("Bitvavo base URL must use HTTPS")
+        
+        bitvavo_config = APIConfig(
+            api_key=bitvavo_api_key,
+            api_secret=bitvavo_api_secret,
+            base_url=bitvavo_base_url,
+            rate_limit=_validate_int_range(
+                os.getenv("BITVAVO_RATE_LIMIT", "300"), "BITVAVO_RATE_LIMIT", 10, 1000
+            ),
+            timeout=_validate_int_range(
+                os.getenv("BITVAVO_API_TIMEOUT", "30"), "BITVAVO_API_TIMEOUT", 5, 120
+            )
+        )
+    
+    # Load KuCoin config if enabled
+    if "kucoin" in enabled_exchanges:
+        kucoin_api_key = os.getenv("KUCOIN_API_KEY", "")
+        kucoin_api_secret = os.getenv("KUCOIN_API_SECRET", "")
+        kucoin_passphrase = os.getenv("KUCOIN_PASSPHRASE", "")
+        
+        if not kucoin_api_key or not kucoin_api_secret or not kucoin_passphrase:
+            raise ValueError("Missing required KuCoin API credentials: KUCOIN_API_KEY, KUCOIN_API_SECRET, KUCOIN_PASSPHRASE")
+        
+        _validate_api_credentials(kucoin_api_key, kucoin_api_secret)
+        
+        kucoin_base_url = os.getenv("KUCOIN_BASE_URL", "https://api.kucoin.com")
+        if not kucoin_base_url.startswith("https://"):
+            raise ValueError("KuCoin base URL must use HTTPS")
+        
+        kucoin_config = APIConfig(
+            api_key=kucoin_api_key,
+            api_secret=kucoin_api_secret,
+            base_url=kucoin_base_url,
+            rate_limit=_validate_int_range(
+                os.getenv("KUCOIN_RATE_LIMIT", "180"), "KUCOIN_RATE_LIMIT", 10, 1000  # KuCoin has lower rate limits
+            ),
+            timeout=_validate_int_range(
+                os.getenv("KUCOIN_API_TIMEOUT", "30"), "KUCOIN_API_TIMEOUT", 5, 120
+            ),
+            passphrase=kucoin_passphrase
+        )
+    
+    return ExchangeConfig(
+        enabled_exchanges=enabled_exchanges,
+        primary_exchange=primary_exchange,
+        bitvavo=bitvavo_config,
+        kucoin=kucoin_config
+    )
+
+
+def load_config() -> tuple[TradingConfig, ExchangeConfig, DipBuyConfig, AssetProtectionConfig, SentimentConfig]:
+    """Load and validate configuration."""
+    # Load exchange configuration (includes validation of API credentials)
+    exchange_config = _load_exchange_config()
 
     # Trading configuration (values can be overridden via environment variables)
     trading_config = TradingConfig(
@@ -660,24 +746,6 @@ def load_config() -> tuple[TradingConfig, APIConfig, DipBuyConfig, AssetProtecti
         )
     )
 
-    # Validate base URL format
-    base_url = os.getenv("BITVAVO_BASE_URL", "https://api.bitvavo.com/v2")
-    if not base_url.startswith("https://"):
-        raise ValueError("Base URL must use HTTPS")
-
-    # API configuration
-    api_config = APIConfig(
-        api_key=api_key,
-        api_secret=api_secret,
-        base_url=base_url,
-        rate_limit=_validate_int_range(
-            os.getenv("RATE_LIMIT", "300"), "RATE_LIMIT", 10, 1000
-        ),
-        timeout=_validate_int_range(
-            os.getenv("API_TIMEOUT", "30"), "API_TIMEOUT", 5, 120
-        )
-    )
-
     # Load dip buy configuration
     dip_config = _load_dip_config()
 
@@ -687,4 +755,4 @@ def load_config() -> tuple[TradingConfig, APIConfig, DipBuyConfig, AssetProtecti
     # Load sentiment configuration
     sentiment_config = _load_sentiment_config()
 
-    return trading_config, api_config, dip_config, asset_protection_config, sentiment_config
+    return trading_config, exchange_config, dip_config, asset_protection_config, sentiment_config
