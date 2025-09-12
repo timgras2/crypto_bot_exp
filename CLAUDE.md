@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a cryptocurrency trading bot project targeting the Bitvavo exchange. The main branch contains the core bot functionality: new listing detection and automated trading with trailing stop-loss.
+This is a clean cryptocurrency trading bot project targeting the Bitvavo exchange. The **master branch** contains the essential core functionality: new listing detection and automated trading with trailing stop-loss protection.
+
+**Master Branch Philosophy**: Focused on reliability and simplicity. Advanced features like multi-exchange support, sentiment analysis, and asset protection strategies are available in feature branches but excluded from master to maintain a clean, easy-to-understand codebase.
 
 ## Project Structure
 
@@ -54,7 +56,7 @@ The main trading bot consists of:
 - **MarketTracker** (`market_utils.py`): Monitors for new token listings on the exchange
 - **TradeManager** (`trade_logic.py`): Handles trade execution and trailing stop-loss monitoring
 - **BitvavoAPI** (`requests_handler.py`): Rate-limited API wrapper with retry logic
-- **Configuration** (`config.py`): Centralized configuration management with dataclasses
+- **Configuration** (`config.py`): Centralized configuration management with enhanced validation and clear error messages
 
 ## Environment Configuration
 
@@ -66,19 +68,40 @@ BITVAVO_API_KEY=your_api_key
 BITVAVO_API_SECRET=your_api_secret
 ```
 
-Optional trading parameters (with defaults):
+Optional trading parameters (with safe defaults):
 ```
-MIN_PROFIT_PCT=5.0          # Stop loss percentage
-TRAILING_PCT=3.0            # Trailing stop percentage  
-MAX_TRADE_AMOUNT=10.0       # Maximum EUR per trade
+# Critical safety settings
+MAX_TRADE_AMOUNT=5.0        # EUR per trade - START VERY SMALL!
+MIN_PROFIT_PCT=5.0          # Stop loss percentage (5% loss = sell)
+TRAILING_PCT=3.0            # Trailing stop percentage (locks in profits)
+
+# Bot behavior
 CHECK_INTERVAL=10           # Price check interval (seconds)
 MAX_RETRIES=3               # API request retry attempts
 RETRY_DELAY=5               # Delay between retries (seconds)
+
+# Advanced API settings (defaults usually work)
 RATE_LIMIT=300              # API requests per minute
 API_TIMEOUT=30              # API request timeout (seconds)
-OPERATOR_ID=1001            # Required by Bitvavo API for order identification
+OPERATOR_ID=1001            # Required by Bitvavo API
 BITVAVO_BASE_URL=https://api.bitvavo.com/v2  # API base URL
 ```
+
+## Safety and Risk Management
+
+**⚠️ CRITICAL SAFETY WARNINGS:**
+- This bot trades with **real money** on cryptocurrency exchanges
+- **Always start with very small amounts** (€1-5 per trade) for testing
+- Never invest more than you can afford to lose completely
+- The bot will automatically trade on **ALL new listings** - this is high risk
+- Monitor the bot closely during initial runs
+- Consider using Bitvavo's paper trading feature first if available
+
+**Enhanced Safety Features in Master Branch:**
+- Improved input validation with clear error messages
+- Better API error handling and retry logic  
+- Comprehensive parameter range checking
+- Safety-focused default values in `.env.example`
 
 ## Common Development Commands
 
