@@ -5,6 +5,7 @@ from pathlib import Path
 
 from config import load_config
 from requests_handler import BitvavoAPI
+from exchange_manager import ExchangeManager
 from market_utils import MarketTracker
 from trade_logic import TradeManager
 
@@ -12,10 +13,17 @@ from trade_logic import TradeManager
 class TradingBot:
     def __init__(self) -> None:
         # Load configuration
-        self.trading_config, self.api_config = load_config()
+        self.trading_config, self.exchange_config = load_config()
 
+        # Initialize exchange manager
+        self.exchange_manager = ExchangeManager(self.exchange_config)
+        
+        # Get primary exchange API (backward compatibility)
+        self.api = self.exchange_manager.get_primary_exchange()
+        if not self.api:
+            raise ValueError(f"Primary exchange '{self.exchange_config.primary_exchange}' is not available")
+            
         # Initialize components
-        self.api = BitvavoAPI(self.api_config)
         self.market_tracker = MarketTracker(
             api=self.api,
             storage_path=Path("data") / "previous_markets.json"
@@ -78,6 +86,8 @@ class TradingBot:
         print(f"💰 Max trade amount: €{self.trading_config.max_trade_amount}")
         print(f"🔄 Checking every {self.trading_config.check_interval} seconds")
         print(f"📈 Stop loss: {self.trading_config.min_profit_pct}% | Trailing stop: {self.trading_config.trailing_pct}%")
+        print(f"🏦 Enabled exchanges: {', '.join(self.exchange_manager.get_enabled_exchanges())}")
+        print(f"⭐ Primary exchange: {self.exchange_config.primary_exchange}")
         print("-" * 60)
         
         # Check if this is first run
@@ -130,7 +140,7 @@ class TradingBot:
                         print(f"📊 Now monitoring for NEW listings added to Bitvavo...")
                         is_first_run = False  # Mark as no longer first run
                     elif scan_count == 1 and not is_first_run:  # Subsequent runs
-                        print(f"📊 Monitoring {len(current_markets)} markets for new listings")
+                        print(f"📊 Monitoring {len(current_markets)} markets for new listings on {self.exchange_config.primary_exchange}")
 
                 # Place trades for new listings
                 for market in new_listings:
@@ -141,8 +151,8 @@ class TradingBot:
                         print(f"⏭️  Already trading {market}, skipping...")
                         continue
 
-                    logging.info(f"Attempting to trade new listing: {market}")
-                    print(f"🔍 Analyzing {market}...")
+                    logging.info(f"Attempting to trade new listing: {market} on {self.exchange_config.primary_exchange}")
+                    print(f"🔍 Analyzing {market} on {self.exchange_config.primary_exchange}...")
 
                     # Try to get ticker data with retries (new markets may take time to have ticker data)
                     ticker = None
